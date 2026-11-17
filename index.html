@@ -41,6 +41,9 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 .inl{display:flex;gap:6px}.inl select{flex:1}.inl .btn{padding:5px 8px;white-space:nowrap;font-size:12px}.mini{background:var(--bg);border:1px dashed var(--line);border-radius:6px;padding:8px;margin-top:6px}.mini label{margin:6px 0 3px}.chk{display:flex;gap:6px;align-items:center;font-weight:600;margin:8px 0}.chk input{width:auto}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.th{width:98px;font-size:11px;color:var(--mute)}.th img{width:98px;height:74px;object-fit:cover;border-radius:4px;display:block}.th button{border:0;background:none;color:var(--high);cursor:pointer;padding:0}
 .cam{width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid #1f77b4;text-align:center;line-height:20px;font-size:12px;box-shadow:0 1px 3px #0006}
+.auth{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:12px}.auth[hidden]{display:none}
+.card{background:var(--panel);width:min(430px,100%);max-height:92vh;overflow:auto;border-radius:8px;padding:16px 18px}.card h2{margin:0 0 8px;font:700 17px Georgia,serif}
+.atabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px}.atabs button{flex:1;padding:8px;border:0;background:none;color:var(--mute);cursor:pointer;font:inherit;border-bottom:3px solid transparent}.atabs button.on{color:var(--brand);border-color:var(--brand);font-weight:600}
 .lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
 @media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
@@ -49,6 +52,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 <body>
 <header>
   <h1>Crop Pest &amp; Disease Surveillance<small>Department of Agriculture – Regional Field Office I</small></h1>
+  <span id="who" style="font-size:13px"></span><button class="btn ghost" id="signout" type="button" style="color:#fff;border-color:#fff;padding:3px 10px" hidden>Sign out</button>
   <div class="role" role="group" aria-label="Role"><button id="r-tech" class="on">Field technician</button><button id="r-admin">Administrator</button></div>
 </header>
 <main>
@@ -110,6 +114,27 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 <div id="map" role="application" aria-label="Surveillance map"></div>
 </main>
 
+<div class="auth" id="auth" hidden><div class="card">
+  <h2>Field technician access</h2>
+  <div class="atabs"><button class="on" data-a="in" type="button">Sign in</button><button data-a="reg" type="button">Register</button></div>
+  <div id="a-in">
+    <label for="u-sel">Technician</label><select id="u-sel"></select>
+    <label for="u-pin">4-digit PIN</label><input id="u-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+    <p class="hint" id="u-empty"></p>
+    <p><button class="btn" id="u-go" type="button">Sign in</button> <button class="btn ghost" id="u-admin" type="button">I am an administrator</button></p>
+  </div>
+  <form id="a-reg" hidden autocomplete="off">
+    <div class="row"><div><label for="g-first">First name</label><input id="g-first" required></div><div><label for="g-mi">MI</label><input id="g-mi" maxlength="2"></div></div>
+    <label for="g-last">Last name</label><input id="g-last" required>
+    <label for="g-pos">Position</label><input id="g-pos" required>
+    <label for="g-level">Level</label><select id="g-level"><option>Municipal</option><option>Provincial</option><option>Regional</option></select>
+    <div id="g-provw"><label for="g-prov">Province</label><select id="g-prov"></select></div>
+    <div id="g-muniw"><label for="g-muni">Municipality / city</label><select id="g-muni"></select></div>
+    <div id="g-regw" hidden><label for="g-reg">Region</label><select id="g-reg"><option>Region I</option></select></div>
+    <label for="g-pin">Choose a 4-digit PIN</label><input id="g-pin" type="password" inputmode="numeric" maxlength="4" required>
+    <p><button class="btn" type="submit">Register and sign in</button></p>
+  </form>
+</div></div>
 <script>
 const DEF={Rice:[["Brown planthopper","Stemborer","Rice black bug","Golden apple snail","Rice bug"],["Rice blast","Bacterial leaf blight","Tungro"]],
 Corn:[["Fall armyworm","Corn borer"],["Downy mildew","Leaf blight"]],Tomato:[["Fruit borer"],["Late blight","Bacterial wilt","Leaf curl"]],
@@ -217,12 +242,12 @@ $("form").onsubmit=e=>{e.preventDefault();
  photos.forEach(p=>{if(p.lat==null){p.lat=pick.lat;p.lng=pick.lng;p.src="map"}});
  const f=farmers.find(x=>x.name===$("farmer").value),[type,pest]=$("pest").value.split("|");
  reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,farmer:f.name,rsbsa:f.rsbsa,crop:$("crop").value,pest,type,sev:$("sev").value,area:+$("area").value||0,
-  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos,polys});
+  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos,polys,uid:(cu&&!admin)?cu.id:null});
  if(!save("pd_reports",reports)){reports.shift();return}
- $("notes").value="";polys=[];cur=[];redrawShapes();photos=[];drawThumbs();if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="Saved. Pick another location to report again.";render()};
+ resetForm();$("coord").textContent="Report saved. The form is cleared for the next report.";render()};
 
 /* incidents */
-const filtered=()=>reports.filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
+const filtered=()=>vis().filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
 function render(){incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
  list.forEach(r=>{const ph=r.photos||[];
   (r.polys||[]).forEach(p=>L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.3}).addTo(incidents).bindTooltip(`${esc(r.pest)} · ${polyHa(p).toFixed(2)} ha`));
@@ -269,11 +294,45 @@ $("layers").onclick=e=>{const t=e.target,l=layers.find(x=>x.id==(t.dataset.i||t.
  save("pd_kml",layers);drawKml()};
 
 /* roles + tabs */
-function setRole(a){admin=a;$("r-admin").classList.toggle("on",a);$("r-tech").classList.toggle("on",!a);$("admin-lock").hidden=a;$("admin-body").hidden=!a}
+function setRole(a){admin=a;$("r-admin").classList.toggle("on",a);$("r-tech").classList.toggle("on",!a);$("admin-lock").hidden=a;$("admin-body").hidden=!a;showAuth();updateWho();applyProfile();render()}
 $("r-admin").onclick=()=>{const p=prompt("Administrator PIN (demo PIN: 1234)");if(p==="1234"){setRole(true);tab("admin")}else if(p!==null)alert("Incorrect PIN")};
 $("r-tech").onclick=()=>setRole(false);
 function tab(n){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===n));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===n))}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
+/* technician accounts */
+let users=load("pd_users",[]),cu=users.find(u=>u.id===load("pd_cur",0))||null;
+const fullName=u=>`${u.first} ${u.mi?u.mi+". ":""}${u.last}`;
+const vis=()=>admin?reports:reports.filter(r=>cu&&r.uid===cu.id);
+opts($("g-prov"),Object.keys(MUNI));
+$("g-prov").onchange=()=>opts($("g-muni"),MUNI[$("g-prov").value].split(","),"Select…");$("g-prov").onchange();
+function regLevel(){const l=$("g-level").value;$("g-provw").hidden=l==="Regional";$("g-muniw").hidden=l!=="Municipal";$("g-regw").hidden=l!=="Regional"}
+$("g-level").onchange=regLevel;regLevel();
+function aTab(t){$("a-in").hidden=t!=="in";$("a-reg").hidden=t!=="reg";document.querySelectorAll(".atabs button").forEach(b=>b.classList.toggle("on",b.dataset.a===t))}
+document.querySelectorAll(".atabs button").forEach(b=>b.onclick=()=>aTab(b.dataset.a));
+function showAuth(){$("auth").hidden=!!cu||admin;
+ $("u-sel").innerHTML=users.map(u=>`<option value="${u.id}">${esc(fullName(u))} – ${esc(u.pos)}</option>`).join("");
+ $("u-empty").textContent=users.length?"":"No technicians are registered yet. Use the Register tab.";if(!users.length)aTab("reg")}
+function updateWho(){$("who").textContent=admin?"Administrator (all reports)":cu?`${fullName(cu)} · ${cu.pos} · ${cu.level}`:"";$("signout").hidden=!cu}
+function applyProfile(){const u=admin?null:cu;
+ opts($("prov"),u&&u.level!=="Regional"?[u.prov]:Object.keys(MUNI));if(u&&u.prov)$("prov").value=u.prov;else $("prov").value="La Union";
+ fillMuni();if(u&&u.level==="Municipal")$("muni").value=u.muni;
+ $("tech").value=u?fullName(u):"";$("tech").readOnly=!!u}
+function resetForm(){photos=[];drawing=false;cur=[];polys=[];setDrawUI();redrawShapes();drawThumbs();
+ if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="No location picked yet.";
+ $("farmer").value="";showF();$("fpanel").hidden=true;$("crop").selectedIndex=0;fillPests();$("sev").selectedIndex=0;
+ $("area").readOnly=false;$("area").value="0.5";$("notes").value="";$("date").value=new Date().toISOString().slice(0,10);applyProfile()}
+function signIn(u){cu=u;save("pd_cur",u.id);updateWho();showAuth();resetForm();render()}
+$("u-go").onclick=()=>{const u=users.find(x=>String(x.id)===$("u-sel").value);if(!u||u.pin!==$("u-pin").value.trim()){alert("Wrong technician or PIN.");return}$("u-pin").value="";signIn(u)};
+$("u-admin").onclick=()=>$("r-admin").click();
+$("a-reg").onsubmit=e=>{e.preventDefault();const g=id=>$(id).value.trim(),l=g("g-level");
+ const u={id:Date.now(),first:g("g-first"),mi:g("g-mi").replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,2),last:g("g-last"),pos:g("g-pos"),level:l,
+  region:"Region I",prov:l==="Regional"?"":g("g-prov"),muni:l==="Municipal"?g("g-muni"):"",pin:g("g-pin")};
+ if(l==="Municipal"&&!u.muni){alert("Select the municipality.");return}
+ if(!/^\d{4}$/.test(u.pin)){alert("The PIN must be 4 digits.");return}
+ if(users.some(x=>fullName(x).toLowerCase()===fullName(u).toLowerCase())){alert("This technician is already registered. Use Sign in.");return}
+ users.push(u);if(!save("pd_users",users)){users.pop();return}
+ e.target.reset();regLevel();$("g-prov").onchange();signIn(u)};
+$("signout").onclick=()=>{cu=null;try{localStorage.removeItem("pd_cur")}catch(e){}setRole(false)};
 render();drawKml();setRole(false);
 </script>
 </body>
