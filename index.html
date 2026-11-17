@@ -77,6 +77,9 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
       <div class="row"><div><label for="crop">Crop</label><div class="inl"><select id="crop"></select><button class="btn ghost" id="addc" type="button">+ Crop</button></div></div>
       <div><label for="pest">Pest / disease</label><select id="pest"></select></div></div>
       <div class="inl" style="margin-top:6px"><button class="btn ghost" id="addp" type="button">+ Pest</button><button class="btn ghost" id="addd" type="button">+ Disease</button></div>
+      <label>Affected area on map</label>
+      <div class="inl"><button class="btn ghost" id="drawb" type="button">Draw area</button><button class="btn ghost" id="undob" type="button">Undo</button><button class="btn ghost" id="clearb" type="button">Clear</button></div>
+      <div class="hint" id="shapes">No area drawn. Type the hectares below only if you are not drawing.</div>
       <div class="row"><div><label for="sev">Severity</label><select id="sev"><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
       <div><label for="area">Area affected (ha)</label><input id="area" type="number" min="0" step="0.01" value="0.5"></div></div>
       <div class="row"><div><label for="prov">Province</label><select id="prov"></select></div>
@@ -132,11 +135,27 @@ const incidents=L.layerGroup().addTo(map),photoGroup=L.layerGroup().addTo(map),k
 L.control.layers({"Street map":osm,"Satellite":sat},{"Incidents":incidents,"Geotagged photos":photoGroup,"KML layers":kmlGroup}).addTo(map);
 const pinIcon=c=>L.divIcon({className:"",html:`<div class="pin" style="background:${c}"></div>`,iconSize:[26,26],iconAnchor:[6,26],popupAnchor:[7,-24]});
 const camIcon=L.divIcon({className:"",html:'<div class="cam">&#128247;</div>',iconSize:[24,24]});
-map.on("click",e=>setPick(e.latlng.lat,e.latlng.lng));
+map.on("click",e=>{if(drawing){cur.push([e.latlng.lat,e.latlng.lng]);redrawShapes()}else setPick(e.latlng.lat,e.latlng.lng)});
 function setPick(lat,lng){pick={lat,lng};if(pickMarker)pickMarker.setLatLng([lat,lng]);else pickMarker=L.marker([lat,lng],{opacity:.7}).addTo(map);
  $("coord").textContent=`Incident location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`}
 $("gps").onclick=()=>devPos().then(p=>{setPick(p.lat,p.lng);map.setView([p.lat,p.lng],15)},()=>alert("GPS unavailable. Tap the map instead."));
 const devPos=()=>new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>ok({lat:p.coords.latitude,lng:p.coords.longitude}),no,{enableHighAccuracy:true,timeout:12000}):no());
+
+/* area delineation */
+const drawGroup=L.layerGroup().addTo(map);let drawing=false,cur=[],polys=[];
+function polyHa(p){const R=6378137,r=Math.PI/180;let t=0;for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length];t+=(b[1]-a[1])*r*(2+Math.sin(a[0]*r)+Math.sin(b[0]*r))}return Math.abs(t*R*R/2)/1e4}
+function redrawShapes(){drawGroup.clearLayers();
+ polys.forEach((p,i)=>L.polygon(p,{color:"#1f77b4",weight:2,fillOpacity:.25}).addTo(drawGroup).bindTooltip(`Shape ${i+1}: ${polyHa(p).toFixed(2)} ha`));
+ if(cur.length){L.polyline(cur,{color:"#e8782a",dashArray:"5 4"}).addTo(drawGroup);cur.forEach(c=>L.circleMarker(c,{radius:4,color:"#e8782a",fillOpacity:1}).addTo(drawGroup))}
+ const tot=polys.reduce((a,p)=>a+polyHa(p),0);
+ $("shapes").textContent=drawing?`Drawing: ${cur.length} corner(s). Click the map to add corners, then press Finish shape.`:polys.length?`${polys.length} shape(s) · ${tot.toFixed(2)} ha (calculated)`:"No area drawn. Type the hectares below only if you are not drawing.";
+ $("area").readOnly=polys.length>0;if(polys.length)$("area").value=tot.toFixed(2)}
+function setDrawUI(){$("drawb").textContent=drawing?"Finish shape":"Draw area";map.getContainer().style.cursor=drawing?"crosshair":"";drawing?map.doubleClickZoom.disable():map.doubleClickZoom.enable()}
+$("drawb").onclick=()=>{if(!drawing){drawing=true;cur=[]}else{if(cur.length<3){alert("A shape needs at least 3 corners.");return}
+  polys.push(cur);if(!pick){setPick(cur.reduce((a,c)=>a+c[0],0)/cur.length,cur.reduce((a,c)=>a+c[1],0)/cur.length)}cur=[];drawing=false}
+ setDrawUI();redrawShapes()};
+$("undob").onclick=()=>{if(drawing&&cur.length)cur.pop();else if(!drawing)polys.pop();redrawShapes()};
+$("clearb").onclick=()=>{polys=[];cur=[];drawing=false;setDrawUI();redrawShapes()};
 
 /* select helpers */
 const opts=(el,arr,first,sel)=>{el.innerHTML=(first!=null?`<option value="">${first}</option>`:"")+arr.map(a=>`<option>${esc(a)}</option>`).join("");if(sel)el.value=sel};
@@ -190,6 +209,7 @@ $("camb").onclick=()=>$("cam").click();$("galb").onclick=()=>$("gal").click();
 $("cam").onchange=e=>{addFiles(e.target.files,true);e.target.value=""};$("gal").onchange=e=>{addFiles(e.target.files,false);e.target.value=""};
 
 $("form").onsubmit=e=>{e.preventDefault();
+ if(drawing){alert("Press Finish shape to close the area you are drawing, or Clear.");return}
  if(!$("farmer").value){alert("Select a farmer, or add a new one.");return}
  if(!$("pest").value){alert("Select the pest or disease.");return}
  if(photos.length<1){alert("Add at least 1 geotagged photo.");return}
@@ -197,14 +217,15 @@ $("form").onsubmit=e=>{e.preventDefault();
  photos.forEach(p=>{if(p.lat==null){p.lat=pick.lat;p.lng=pick.lng;p.src="map"}});
  const f=farmers.find(x=>x.name===$("farmer").value),[type,pest]=$("pest").value.split("|");
  reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,farmer:f.name,rsbsa:f.rsbsa,crop:$("crop").value,pest,type,sev:$("sev").value,area:+$("area").value||0,
-  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos});
+  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos,polys});
  if(!save("pd_reports",reports)){reports.shift();return}
- $("notes").value="";photos=[];drawThumbs();if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="Saved. Pick another location to report again.";render()};
+ $("notes").value="";polys=[];cur=[];redrawShapes();photos=[];drawThumbs();if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="Saved. Pick another location to report again.";render()};
 
 /* incidents */
 const filtered=()=>reports.filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
 function render(){incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
  list.forEach(r=>{const ph=r.photos||[];
+  (r.polys||[]).forEach(p=>L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.3}).addTo(incidents).bindTooltip(`${esc(r.pest)} · ${polyHa(p).toFixed(2)} ha`));
   L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
   `<b>${esc(r.pest)}</b> (${esc(r.type)}) on ${esc(r.crop)}<br>Farmer: ${esc(r.farmer)} · ${r.rsbsa?"RSBSA registered":"Not in RSBSA"}<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}<br>`+ph.map(p=>`<img src="${p.d}" width="64" style="margin:3px 3px 0 0">`).join(""),{maxWidth:260});
   ph.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:camIcon}).addTo(photoGroup).bindPopup(`<img src="${p.d}" width="200"><br>Photo ${i+1} · ${esc(r.pest)}<br>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} (${p.src})`))});
@@ -217,7 +238,7 @@ $("f-crop").onchange=$("f-sev").onchange=render;
 const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()};
 $("csv").onclick=()=>{const h=["id","date","farmer","rsbsa","crop","type","pest","sev","area","prov","muni","lat","lng","tech","notes"];
  dl("incidents.csv",[h.join(",")].concat(filtered().map(r=>h.map(k=>`"${String(r[k]).replace(/"/g,'""')}"`).join(","))).join("\n"),"text/csv")};
-$("gj").onclick=()=>dl("incidents.geojson",JSON.stringify({type:"FeatureCollection",features:filtered().map(r=>({type:"Feature",geometry:{type:"Point",coordinates:[r.lng,r.lat]},properties:{...r,photos:(r.photos||[]).map(p=>({lat:p.lat,lng:p.lng,src:p.src}))}}))}),"application/geo+json");
+$("gj").onclick=()=>dl("incidents.geojson",JSON.stringify({type:"FeatureCollection",features:filtered().flatMap(r=>[{type:"Feature",geometry:{type:"Point",coordinates:[r.lng,r.lat]},properties:{...r,photos:(r.photos||[]).map(p=>({lat:p.lat,lng:p.lng,src:p.src}))}}].concat((r.polys||[]).map(p=>({type:"Feature",geometry:{type:"Polygon",coordinates:[p.concat([p[0]]).map(c=>[c[1],c[0]])]},properties:{id:r.id,pest:r.pest,sev:r.sev,ha:+polyHa(p).toFixed(3)}}))))}),"application/geo+json");
 
 /* KML */
 function kmlToGeoJSON(txt){const x=new DOMParser().parseFromString(txt,"text/xml");
