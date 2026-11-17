@@ -38,6 +38,9 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 .item small{color:var(--mute)}
 #map{height:100%;min-height:300px}
 .layer{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.layer span{flex:1;word-break:break-word}
+.inl{display:flex;gap:6px}.inl select{flex:1}.inl .btn{padding:5px 8px;white-space:nowrap;font-size:12px}.mini{background:var(--bg);border:1px dashed var(--line);border-radius:6px;padding:8px;margin-top:6px}.mini label{margin:6px 0 3px}.chk{display:flex;gap:6px;align-items:center;font-weight:600;margin:8px 0}.chk input{width:auto}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.th{width:98px;font-size:11px;color:var(--mute)}.th img{width:98px;height:74px;object-fit:cover;border-radius:4px;display:block}.th button{border:0;background:none;color:var(--high);cursor:pointer;padding:0}
+.cam{width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid #1f77b4;text-align:center;line-height:20px;font-size:12px;box-shadow:0 1px 3px #0006}
 .lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
 @media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
@@ -57,12 +60,27 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
     <button class="btn ghost" id="gps" type="button">Use my GPS location</button>
     <div class="coord" id="coord">No location picked yet.</div>
     <form id="form" autocomplete="off">
-      <div class="row"><div><label for="crop">Crop</label><select id="crop"></select></div>
+      <label for="farmer">Farmer</label>
+      <div class="inl"><select id="farmer"></select><button class="btn ghost" id="addf" type="button">+ Farmer</button></div>
+      <div id="fstat" class="hint"></div>
+      <div id="fpanel" class="mini" hidden>
+        <label for="fname">Farmer name (Last, First M.)</label><input id="fname">
+        <div class="chk"><input type="checkbox" id="frsbsa"><label for="frsbsa" style="margin:0">Registered in RSBSA</label></div>
+        <div id="fidwrap" hidden><label for="fid">Photo of RSBSA ID</label><input id="fid" type="file" accept="image/*" capture="environment"><img id="fidprev" alt="" style="max-width:120px;margin-top:4px;display:none"></div>
+        <p><button class="btn" id="savef" type="button">Save farmer</button> <button class="btn ghost" id="cancelf" type="button">Cancel</button></p>
+      </div>
+      <label>Geotagged photos (1 to 3)</label>
+      <div class="inl"><button class="btn ghost" id="camb" type="button">Take photo</button><button class="btn ghost" id="galb" type="button">Choose photos</button></div>
+      <input id="cam" type="file" accept="image/*" capture="environment" hidden><input id="gal" type="file" accept="image/*" multiple hidden>
+      <div class="hint">Photos taken in-app use this device's GPS. Chosen photos use the GPS saved in the file.</div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="row"><div><label for="crop">Crop</label><div class="inl"><select id="crop"></select><button class="btn ghost" id="addc" type="button">+ Crop</button></div></div>
       <div><label for="pest">Pest / disease</label><select id="pest"></select></div></div>
+      <div class="inl" style="margin-top:6px"><button class="btn ghost" id="addp" type="button">+ Pest</button><button class="btn ghost" id="addd" type="button">+ Disease</button></div>
       <div class="row"><div><label for="sev">Severity</label><select id="sev"><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
       <div><label for="area">Area affected (ha)</label><input id="area" type="number" min="0" step="0.01" value="0.5"></div></div>
-      <div class="row"><div><label for="prov">Province</label><select id="prov"><option>La Union</option><option>Ilocos Norte</option><option>Ilocos Sur</option><option>Pangasinan</option></select></div>
-      <div><label for="muni">Municipality</label><input id="muni" required></div></div>
+      <div class="row"><div><label for="prov">Province</label><select id="prov"></select></div>
+      <div><label for="muni">Municipality / city</label><select id="muni" required></select></div></div>
       <div class="row"><div><label for="date">Date observed</label><input id="date" type="date" required></div>
       <div><label for="tech">Reported by</label><input id="tech" required></div></div>
       <label for="notes">Notes / action taken</label><textarea id="notes" rows="3"></textarea>
@@ -90,14 +108,19 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 </main>
 
 <script>
-const CROPS={Rice:["Brown planthopper","Rice blast","Bacterial leaf blight","Stemborer","Rice black bug","Golden apple snail","Tungro","Rice bug"],
-Corn:["Fall armyworm","Corn borer","Downy mildew","Leaf blight"],Tomato:["Fruit borer","Late blight","Bacterial wilt","Leaf curl"],
-Mango:["Mango hopper","Anthracnose","Cecid fly"],Vegetables:["Diamondback moth","Cutworm","Aphids","Fusarium wilt"],Other:["Other pest","Other disease"]};
+const DEF={Rice:[["Brown planthopper","Stemborer","Rice black bug","Golden apple snail","Rice bug"],["Rice blast","Bacterial leaf blight","Tungro"]],
+Corn:[["Fall armyworm","Corn borer"],["Downy mildew","Leaf blight"]],Tomato:[["Fruit borer"],["Late blight","Bacterial wilt","Leaf curl"]],
+Mango:[["Mango hopper","Cecid fly"],["Anthracnose"]],Vegetables:[["Diamondback moth","Cutworm","Aphids"],["Fusarium wilt"]],Other:[[],[]]};
+const MUNI={"Ilocos Norte":"Adams,Bacarra,Badoc,Bangui,Banna,Batac City,Burgos,Carasi,Currimao,Dingras,Dumalneg,Laoag City,Marcos,Nueva Era,Pagudpud,Paoay,Pasuquin,Piddig,Pinili,San Nicolas,Sarrat,Solsona,Vintar",
+"Ilocos Sur":"Alilem,Banayoyo,Bantay,Burgos,Cabugao,Candon City,Caoayan,Cervantes,Galimuyod,Gregorio del Pilar,Lidlidda,Magsingal,Nagbukel,Narvacan,Quirino,Salcedo,San Emilio,San Esteban,San Ildefonso,San Juan,San Vicente,Santa,Santa Catalina,Santa Cruz,Santa Lucia,Santa Maria,Santiago,Santo Domingo,Sigay,Sinait,Sugpon,Suyo,Tagudin,Vigan City",
+"La Union":"Agoo,Aringay,Bacnotan,Bagulin,Balaoan,Bangar,Bauang,Burgos,Caba,Luna,Naguilian,Pugo,Rosario,San Fernando City,San Gabriel,San Juan,Santo Tomas,Santol,Sudipen,Tubao",
+"Pangasinan":"Agno,Aguilar,Alaminos City,Alcala,Anda,Asingan,Balungao,Bani,Basista,Bautista,Bayambang,Binalonan,Binmaley,Bolinao,Bugallon,Burgos,Calasiao,Dagupan City,Dasol,Infanta,Labrador,Laoac,Lingayen,Mabini,Malasiqui,Manaoag,Mangaldan,Mangatarem,Mapandan,Natividad,Pozorrubio,Rosales,San Carlos City,San Fabian,San Jacinto,San Manuel,San Nicolas,San Quintin,Santa Barbara,Santa Maria,Santo Tomas,Sison,Sual,Tayug,Umingan,Urbiztondo,Urdaneta City,Villasis"};
 const COL={Low:"#e0a526",Moderate:"#e8782a",High:"#c0392b",Severe:"#7b1d1d"};
 const $=id=>document.getElementById(id);
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
-const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){alert("Storage is full. Remove a large KML layer.")}};
-let reports=load("pd_reports",[]),layers=load("pd_kml",[]),admin=false,pick=null,pickMarker=null;
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){alert("Browser storage is full. Remove old reports or large KML layers.");return false}};
+const CAT=load("pd_cat",null)||Object.fromEntries(Object.entries(DEF).map(([c,v])=>[c,{pest:v[0],disease:v[1]}]));
+let reports=load("pd_reports",[]),farmers=load("pd_farmers",[]),layers=load("pd_kml",[]),admin=false,pick=null,pickMarker=null,photos=[],fidData=null;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* map */
@@ -105,41 +128,96 @@ const map=L.map("map").setView([16.6,120.4],9);
 const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
 const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"});
 osm.addTo(map);
-const incidents=L.layerGroup().addTo(map), kmlGroup=L.layerGroup().addTo(map);
-L.control.layers({"Street map":osm,"Satellite":sat},{"Incidents":incidents,"KML layers":kmlGroup}).addTo(map);
+const incidents=L.layerGroup().addTo(map),photoGroup=L.layerGroup().addTo(map),kmlGroup=L.layerGroup().addTo(map);
+L.control.layers({"Street map":osm,"Satellite":sat},{"Incidents":incidents,"Geotagged photos":photoGroup,"KML layers":kmlGroup}).addTo(map);
 const pinIcon=c=>L.divIcon({className:"",html:`<div class="pin" style="background:${c}"></div>`,iconSize:[26,26],iconAnchor:[6,26],popupAnchor:[7,-24]});
-
+const camIcon=L.divIcon({className:"",html:'<div class="cam">&#128247;</div>',iconSize:[24,24]});
 map.on("click",e=>setPick(e.latlng.lat,e.latlng.lng));
 function setPick(lat,lng){pick={lat,lng};if(pickMarker)pickMarker.setLatLng([lat,lng]);else pickMarker=L.marker([lat,lng],{opacity:.7}).addTo(map);
- $("coord").textContent=`Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`}
-$("gps").onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{setPick(p.coords.latitude,p.coords.longitude);map.setView([p.coords.latitude,p.coords.longitude],15)},()=>alert("GPS unavailable. Tap the map instead."),{enableHighAccuracy:true}):alert("GPS not supported.");
+ $("coord").textContent=`Incident location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`}
+$("gps").onclick=()=>devPos().then(p=>{setPick(p.lat,p.lng);map.setView([p.lat,p.lng],15)},()=>alert("GPS unavailable. Tap the map instead."));
+const devPos=()=>new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>ok({lat:p.coords.latitude,lng:p.coords.longitude}),no,{enableHighAccuracy:true,timeout:12000}):no());
 
-/* form */
-const fill=(el,arr,all)=>{el.innerHTML=(all?`<option value="">${all}</option>`:"")+arr.map(a=>`<option>${a}</option>`).join("")};
-fill($("crop"),Object.keys(CROPS));fill($("f-crop"),Object.keys(CROPS),"All crops");
-const setPests=()=>fill($("pest"),CROPS[$("crop").value]);$("crop").onchange=setPests;setPests();
+/* select helpers */
+const opts=(el,arr,first,sel)=>{el.innerHTML=(first!=null?`<option value="">${first}</option>`:"")+arr.map(a=>`<option>${esc(a)}</option>`).join("");if(sel)el.value=sel};
+function fillCrops(sel){const c=Object.keys(CAT).sort();opts($("crop"),c,null,sel);opts($("f-crop"),c,"All crops",$("f-crop").value)}
+function fillPests(sel){const c=CAT[$("crop").value]||{pest:[],disease:[]};
+ $("pest").innerHTML='<option value="">Select…</option><optgroup label="Pests">'+c.pest.map(p=>`<option value="pest|${esc(p)}">${esc(p)}</option>`).join("")+'</optgroup><optgroup label="Diseases">'+c.disease.map(p=>`<option value="disease|${esc(p)}">${esc(p)}</option>`).join("")+"</optgroup>";if(sel)$("pest").value=sel}
+$("crop").onchange=()=>fillPests();
+$("addc").onclick=()=>{const n=(prompt("New crop name")||"").trim();if(!n)return;if(!CAT[n])CAT[n]={pest:[],disease:[]};save("pd_cat",CAT);fillCrops(n);fillPests()};
+const addPD=t=>{const n=(prompt(`New ${t} for ${$("crop").value}`)||"").trim();if(!n)return;const l=CAT[$("crop").value][t];if(!l.includes(n))l.push(n);save("pd_cat",CAT);fillPests(t+"|"+n)};
+$("addp").onclick=()=>addPD("pest");$("addd").onclick=()=>addPD("disease");
+opts($("prov"),Object.keys(MUNI));
+const fillMuni=()=>opts($("muni"),MUNI[$("prov").value].split(","),"Select…");$("prov").onchange=fillMuni;$("prov").value="La Union";fillMuni();
+fillCrops();fillPests();
 $("date").value=new Date().toISOString().slice(0,10);
+
+/* farmers */
+function fillFarmers(sel){opts($("farmer"),farmers.map(f=>f.name),"Select farmer…",sel);showF()}
+function showF(){const f=farmers.find(x=>x.name===$("farmer").value);
+ $("fstat").innerHTML=f?(f.rsbsa?"RSBSA registered":"Not registered in RSBSA")+(f.idPhoto?` · <a href="${f.idPhoto}" target="_blank" rel="noopener">view ID photo</a>`:""):""}
+$("farmer").onchange=showF;
+$("addf").onclick=()=>{$("fpanel").hidden=false;$("fname").focus()};
+$("cancelf").onclick=()=>{$("fpanel").hidden=true};
+$("frsbsa").onchange=()=>{$("fidwrap").hidden=!$("frsbsa").checked};
+$("fid").onchange=async e=>{if(!e.target.files[0])return;fidData=await shrink(e.target.files[0],1000);$("fidprev").src=fidData;$("fidprev").style.display="block"};
+$("savef").onclick=()=>{const n=$("fname").value.trim();if(!n){alert("Enter the farmer's name.");return}
+ if(farmers.some(f=>f.name.toLowerCase()===n.toLowerCase())){alert("This farmer is already in the list.");return}
+ farmers.push({name:n,rsbsa:$("frsbsa").checked,idPhoto:$("frsbsa").checked?fidData:null});farmers.sort((a,b)=>a.name.localeCompare(b.name));save("pd_farmers",farmers);
+ fidData=null;$("fname").value="";$("frsbsa").checked=false;$("fidwrap").hidden=true;$("fidprev").style.display="none";$("fpanel").hidden=true;fillFarmers(n)};
+fillFarmers();
+
+/* photos: EXIF GPS + resize */
+function exifGPS(buf){const v=new DataView(buf);if(v.getUint16(0)!==0xFFD8)return null;let o=2;
+ while(o<v.byteLength-4){const m=v.getUint16(o);if(m===0xFFE1&&v.getUint32(o+4)===0x45786966){const r=gpsAt(v,o+10);if(r)return r}if((m&0xFF00)!==0xFF00)break;o+=2+v.getUint16(o+2)}return null}
+function gpsAt(v,t){const le=v.getUint16(t)===0x4949,u16=p=>v.getUint16(p,le),u32=p=>v.getUint32(p,le);
+ const ifd=p=>{const n=u16(p),r={};for(let i=0;i<n;i++){const e=p+2+i*12;r[u16(e)]=e}return r};
+ const i0=ifd(t+u32(t+4));if(!i0[0x8825])return null;const g=ifd(t+u32(i0[0x8825]+8));if(!g[2]||!g[4])return null;
+ const dms=e=>{const p=t+u32(e+8);const a=[0,1,2].map(k=>u32(p+k*8)/(u32(p+k*8+4)||1));return a[0]+a[1]/60+a[2]/3600};
+ const ref=e=>String.fromCharCode(v.getUint8(e+8));let lat=dms(g[2]),lng=dms(g[4]);
+ if(g[1]&&ref(g[1])==="S")lat=-lat;if(g[3]&&ref(g[3])==="W")lng=-lng;return(lat||lng)?{lat,lng}:null}
+function shrink(f,max=800){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");
+ c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",.6))};im.onerror=no;im.src=u})}
+async function addFiles(files,cam){
+ for(const f of files){if(photos.length>=3){alert("Maximum of 3 photos per incident.");break}
+  let g=null,src="none";try{g=exifGPS(await f.arrayBuffer());if(g)src="photo"}catch(e){}
+  if(!g&&cam){try{g=await devPos();src="device"}catch(e){}}
+  photos.push({d:await shrink(f),lat:g?g.lat:null,lng:g?g.lng:null,src})}
+ const p=photos.find(x=>x.lat!=null);if(p&&!pick){setPick(p.lat,p.lng);map.setView([p.lat,p.lng],16)}drawThumbs()}
+function drawThumbs(){$("thumbs").innerHTML=photos.map((p,i)=>`<div class="th"><img src="${p.d}" alt="Photo ${i+1}">${{photo:"GPS in photo",device:"GPS from device",none:"No GPS: will use map pin"}[p.src]}<br><button type="button" data-x="${i}">Remove</button></div>`).join("")}
+$("thumbs").onclick=e=>{if(e.target.dataset.x!=null){photos.splice(+e.target.dataset.x,1);drawThumbs()}};
+$("camb").onclick=()=>$("cam").click();$("galb").onclick=()=>$("gal").click();
+$("cam").onchange=e=>{addFiles(e.target.files,true);e.target.value=""};$("gal").onchange=e=>{addFiles(e.target.files,false);e.target.value=""};
+
 $("form").onsubmit=e=>{e.preventDefault();
- if(!pick){alert("Pick the incident location on the map first.");return}
- reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,crop:$("crop").value,pest:$("pest").value,sev:$("sev").value,area:+$("area").value||0,
-  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value});
- save("pd_reports",reports);$("notes").value="";if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="Saved. Pick another location to report again.";render()};
+ if(!$("farmer").value){alert("Select a farmer, or add a new one.");return}
+ if(!$("pest").value){alert("Select the pest or disease.");return}
+ if(photos.length<1){alert("Add at least 1 geotagged photo.");return}
+ if(!pick){alert("No location yet. Tap the map to pin the incident.");return}
+ photos.forEach(p=>{if(p.lat==null){p.lat=pick.lat;p.lng=pick.lng;p.src="map"}});
+ const f=farmers.find(x=>x.name===$("farmer").value),[type,pest]=$("pest").value.split("|");
+ reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,farmer:f.name,rsbsa:f.rsbsa,crop:$("crop").value,pest,type,sev:$("sev").value,area:+$("area").value||0,
+  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos});
+ if(!save("pd_reports",reports)){reports.shift();return}
+ $("notes").value="";photos=[];drawThumbs();if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="Saved. Pick another location to report again.";render()};
 
 /* incidents */
 const filtered=()=>reports.filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
-function render(){incidents.clearLayers();const list=filtered();
- list.forEach(r=>L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
-  `<b>${esc(r.pest)}</b> (${esc(r.crop)})<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}`));
+function render(){incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
+ list.forEach(r=>{const ph=r.photos||[];
+  L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
+  `<b>${esc(r.pest)}</b> (${esc(r.type)}) on ${esc(r.crop)}<br>Farmer: ${esc(r.farmer)} · ${r.rsbsa?"RSBSA registered":"Not in RSBSA"}<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}<br>`+ph.map(p=>`<img src="${p.d}" width="64" style="margin:3px 3px 0 0">`).join(""),{maxWidth:260});
+  ph.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:camIcon}).addTo(photoGroup).bindPopup(`<img src="${p.d}" width="200"><br>Photo ${i+1} · ${esc(r.pest)}<br>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} (${p.src})`))});
  const cut=Date.now()-30*864e5;
  $("s-all").textContent=list.length;$("s-high").textContent=list.filter(r=>r.sev=="High"||r.sev=="Severe").length;
  $("s-ha").textContent=list.reduce((a,r)=>a+r.area,0).toFixed(1);$("s-30").textContent=list.filter(r=>new Date(r.date)>=cut).length;
- $("items").innerHTML=list.length?list.map(r=>`<div class="item" data-id="${r.id}"><span class="dot" style="background:${COL[r.sev]}"></span><b>${esc(r.pest)}</b> – ${esc(r.crop)}<br><small>${esc(r.muni)}, ${esc(r.prov)} · ${r.sev} · ${esc(r.date)}</small></div>`).join(""):'<p class="hint">No incidents match. Reports you save appear here.</p>'}
+ $("items").innerHTML=list.length?list.map(r=>`<div class="item" data-id="${r.id}"><span class="dot" style="background:${COL[r.sev]}"></span><b>${esc(r.pest)}</b> – ${esc(r.crop)}<br><small>${esc(r.farmer)} · ${esc(r.muni)}, ${esc(r.prov)} · ${r.sev} · ${esc(r.date)}</small></div>`).join(""):'<p class="hint">No incidents match. Reports you save appear here.</p>'}
 $("items").onclick=e=>{const it=e.target.closest(".item");if(!it)return;const r=reports.find(x=>x.id==it.dataset.id);map.setView([r.lat,r.lng],15)};
 $("f-crop").onchange=$("f-sev").onchange=render;
 const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()};
-$("csv").onclick=()=>{const h=["id","date","crop","pest","sev","area","prov","muni","lat","lng","tech","notes"];
+$("csv").onclick=()=>{const h=["id","date","farmer","rsbsa","crop","type","pest","sev","area","prov","muni","lat","lng","tech","notes"];
  dl("incidents.csv",[h.join(",")].concat(filtered().map(r=>h.map(k=>`"${String(r[k]).replace(/"/g,'""')}"`).join(","))).join("\n"),"text/csv")};
-$("gj").onclick=()=>dl("incidents.geojson",JSON.stringify({type:"FeatureCollection",features:filtered().map(r=>({type:"Feature",geometry:{type:"Point",coordinates:[r.lng,r.lat]},properties:r}))}),"application/geo+json");
+$("gj").onclick=()=>dl("incidents.geojson",JSON.stringify({type:"FeatureCollection",features:filtered().map(r=>({type:"Feature",geometry:{type:"Point",coordinates:[r.lng,r.lat]},properties:{...r,photos:(r.photos||[]).map(p=>({lat:p.lat,lng:p.lng,src:p.src}))}}))}),"application/geo+json");
 
 /* KML */
 function kmlToGeoJSON(txt){const x=new DOMParser().parseFromString(txt,"text/xml");
