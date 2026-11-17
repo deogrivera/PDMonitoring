@@ -99,7 +99,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
     <div class="stats"><div><b id="s-all">0</b>Total</div><div><b id="s-high">0</b>High+</div><div><b id="s-ha">0</b>Ha</div><div><b id="s-30">0</b>30 days</div></div>
     <div class="row"><select id="f-crop" aria-label="Filter crop"></select><select id="f-sev" aria-label="Filter severity"><option value="">All severity</option><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
     <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button></p>
-    <div id="items"></div>
+    <p class="hint" id="sync"></p><p><button class="btn ghost" id="syncb" type="button">Sync now</button></p><div id="items"></div>
   </section>
 
   <section class="pane" id="admin">
@@ -136,6 +136,9 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
   </form>
 </div></div>
 <script>
+// Paste the Apps Script Web app URL here (see Code.gs). While it is unchanged, the app runs in local demo mode.
+const API_URL="https://script.google.com/macros/s/AKfycby5klpEGOEqISDHCQ5LUVvw0YNbsqrWn7ejvRut1YUY3S8bSodrdcMMBCWNbcOeavEW/exec";
+const ON=!API_URL.includes("PASTE");
 const DEF={Rice:[["Brown planthopper","Stemborer","Rice black bug","Golden apple snail","Rice bug"],["Rice blast","Bacterial leaf blight","Tungro"]],
 Corn:[["Fall armyworm","Corn borer"],["Downy mildew","Leaf blight"]],Tomato:[["Fruit borer"],["Late blight","Bacterial wilt","Leaf curl"]],
 Mango:[["Mango hopper","Cecid fly"],["Anthracnose"]],Vegetables:[["Diamondback moth","Cutworm","Aphids"],["Fusarium wilt"]],Other:[[],[]]};
@@ -188,8 +191,8 @@ function fillCrops(sel){const c=Object.keys(CAT).sort();opts($("crop"),c,null,se
 function fillPests(sel){const c=CAT[$("crop").value]||{pest:[],disease:[]};
  $("pest").innerHTML='<option value="">Select…</option><optgroup label="Pests">'+c.pest.map(p=>`<option value="pest|${esc(p)}">${esc(p)}</option>`).join("")+'</optgroup><optgroup label="Diseases">'+c.disease.map(p=>`<option value="disease|${esc(p)}">${esc(p)}</option>`).join("")+"</optgroup>";if(sel)$("pest").value=sel}
 $("crop").onchange=()=>fillPests();
-$("addc").onclick=()=>{const n=(prompt("New crop name")||"").trim();if(!n)return;if(!CAT[n])CAT[n]={pest:[],disease:[]};save("pd_cat",CAT);fillCrops(n);fillPests()};
-const addPD=t=>{const n=(prompt(`New ${t} for ${$("crop").value}`)||"").trim();if(!n)return;const l=CAT[$("crop").value][t];if(!l.includes(n))l.push(n);save("pd_cat",CAT);fillPests(t+"|"+n)};
+$("addc").onclick=()=>{const n=(prompt("New crop name")||"").trim();if(!n)return;if(!CAT[n])CAT[n]={pest:[],disease:[]};save("pd_cat",CAT);if(ON)api("catalog_add",{crop:n,type:"crop",name:n}).catch(()=>{});fillCrops(n);fillPests()};
+const addPD=t=>{const n=(prompt(`New ${t} for ${$("crop").value}`)||"").trim();if(!n)return;const l=CAT[$("crop").value][t];if(!l.includes(n))l.push(n);save("pd_cat",CAT);if(ON)api("catalog_add",{crop:$("crop").value,type:t,name:n}).catch(()=>{});fillPests(t+"|"+n)};
 $("addp").onclick=()=>addPD("pest");$("addd").onclick=()=>addPD("disease");
 opts($("prov"),Object.keys(MUNI));
 const fillMuni=()=>opts($("muni"),MUNI[$("prov").value].split(","),"Select…");$("prov").onchange=fillMuni;$("prov").value="La Union";fillMuni();
@@ -208,7 +211,7 @@ $("fid").onchange=async e=>{if(!e.target.files[0])return;fidData=await shrink(e.
 $("savef").onclick=()=>{const n=$("fname").value.trim();if(!n){alert("Enter the farmer's name.");return}
  if(farmers.some(f=>f.name.toLowerCase()===n.toLowerCase())){alert("This farmer is already in the list.");return}
  farmers.push({name:n,rsbsa:$("frsbsa").checked,idPhoto:$("frsbsa").checked?fidData:null});farmers.sort((a,b)=>a.name.localeCompare(b.name));save("pd_farmers",farmers);
- fidData=null;$("fname").value="";$("frsbsa").checked=false;$("fidwrap").hidden=true;$("fidprev").style.display="none";$("fpanel").hidden=true;fillFarmers(n)};
+ fidData=null;$("fname").value="";$("frsbsa").checked=false;$("fidwrap").hidden=true;$("fidprev").style.display="none";$("fpanel").hidden=true;fillFarmers(n);push()};
 fillFarmers();
 
 /* photos: EXIF GPS + resize */
@@ -228,7 +231,7 @@ async function addFiles(files,cam){
   if(!g&&cam){try{g=await devPos();src="device"}catch(e){}}
   photos.push({d:await shrink(f),lat:g?g.lat:null,lng:g?g.lng:null,src})}
  const p=photos.find(x=>x.lat!=null);if(p&&!pick){setPick(p.lat,p.lng);map.setView([p.lat,p.lng],16)}drawThumbs()}
-function drawThumbs(){$("thumbs").innerHTML=photos.map((p,i)=>`<div class="th"><img src="${p.d}" alt="Photo ${i+1}">${{photo:"GPS in photo",device:"GPS from device",none:"No GPS: will use map pin"}[p.src]}<br><button type="button" data-x="${i}">Remove</button></div>`).join("")}
+function drawThumbs(){$("thumbs").innerHTML=photos.map((p,i)=>`<div class="th"><img src="${p.d||p.url}" alt="Photo ${i+1}">${{photo:"GPS in photo",device:"GPS from device",none:"No GPS: will use map pin"}[p.src]}<br><button type="button" data-x="${i}">Remove</button></div>`).join("")}
 $("thumbs").onclick=e=>{if(e.target.dataset.x!=null){photos.splice(+e.target.dataset.x,1);drawThumbs()}};
 $("camb").onclick=()=>$("cam").click();$("galb").onclick=()=>$("gal").click();
 $("cam").onchange=e=>{addFiles(e.target.files,true);e.target.value=""};$("gal").onchange=e=>{addFiles(e.target.files,false);e.target.value=""};
@@ -242,9 +245,9 @@ $("form").onsubmit=e=>{e.preventDefault();
  photos.forEach(p=>{if(p.lat==null){p.lat=pick.lat;p.lng=pick.lng;p.src="map"}});
  const f=farmers.find(x=>x.name===$("farmer").value),[type,pest]=$("pest").value.split("|");
  reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,farmer:f.name,rsbsa:f.rsbsa,crop:$("crop").value,pest,type,sev:$("sev").value,area:+$("area").value||0,
-  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos,polys,uid:(cu&&!admin)?cu.id:null});
- if(!save("pd_reports",reports)){reports.shift();return}
- resetForm();$("coord").textContent="Report saved. The form is cleared for the next report.";render()};
+  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos,polys,uid:(cu&&!admin)?cu.id:null,synced:false});
+ if(!save("pd_reports",ON?reports.filter(r=>!r.synced):reports)){reports.shift();return}
+ resetForm();$("coord").textContent="Report saved. The form is cleared for the next report.";render();push()};
 
 /* incidents */
 const filtered=()=>vis().filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
@@ -252,8 +255,8 @@ function render(){incidents.clearLayers();photoGroup.clearLayers();const list=fi
  list.forEach(r=>{const ph=r.photos||[];
   (r.polys||[]).forEach(p=>L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.3}).addTo(incidents).bindTooltip(`${esc(r.pest)} · ${polyHa(p).toFixed(2)} ha`));
   L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
-  `<b>${esc(r.pest)}</b> (${esc(r.type)}) on ${esc(r.crop)}<br>Farmer: ${esc(r.farmer)} · ${r.rsbsa?"RSBSA registered":"Not in RSBSA"}<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}<br>`+ph.map(p=>`<img src="${p.d}" width="64" style="margin:3px 3px 0 0">`).join(""),{maxWidth:260});
-  ph.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:camIcon}).addTo(photoGroup).bindPopup(`<img src="${p.d}" width="200"><br>Photo ${i+1} · ${esc(r.pest)}<br>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} (${p.src})`))});
+  `<b>${esc(r.pest)}</b> (${esc(r.type)}) on ${esc(r.crop)}<br>Farmer: ${esc(r.farmer)} · ${r.rsbsa?"RSBSA registered":"Not in RSBSA"}<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}<br>`+ph.map(p=>`<img src="${p.d||p.url}" width="64" style="margin:3px 3px 0 0">`).join(""),{maxWidth:260});
+  ph.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:camIcon}).addTo(photoGroup).bindPopup(`<img src="${p.d||p.url}" width="200"><br>Photo ${i+1} · ${esc(r.pest)}<br>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} (${p.src})`))});
  const cut=Date.now()-30*864e5;
  $("s-all").textContent=list.length;$("s-high").textContent=list.filter(r=>r.sev=="High"||r.sev=="Severe").length;
  $("s-ha").textContent=list.reduce((a,r)=>a+r.area,0).toFixed(1);$("s-30").textContent=list.filter(r=>new Date(r.date)>=cut).length;
@@ -286,21 +289,24 @@ function drawKml(){kmlGroup.clearLayers();
   onEachFeature:(f,lyr)=>{const p=f.properties;if(p.name||p.description)lyr.bindPopup(`<b>${esc(p.name)}</b><br>${p.description?esc(p.description.replace(/<[^>]+>/g,"")):""}`)}}).addTo(kmlGroup)});
  $("layers").innerHTML=layers.length?layers.map(l=>`<div class="layer"><input type="checkbox" data-i="${l.id}" ${l.on?"checked":""} aria-label="Show ${esc(l.name)}"><span style="color:${l.color}">■ ${esc(l.name)}</span><button class="btn ghost" data-z="${l.id}">Zoom</button><button class="btn ghost" data-d="${l.id}">Remove</button></div>`).join(""):'<p class="hint">No KML layers yet. Upload one above.</p>'}
 $("kml").onchange=async e=>{const f=e.target.files[0];if(!f)return;
- try{const data=kmlToGeoJSON(await f.text());
-  const l={id:Date.now(),name:f.name,data,on:true,color:PAL[layers.length%PAL.length]};layers.push(l);save("pd_kml",layers);drawKml();
+ try{const txt=await f.text(),data=kmlToGeoJSON(txt);
+  const l={id:Date.now(),name:f.name,data,on:true,color:PAL[layers.length%PAL.length]};if(ON)l.id=(await api("kml_add",{name:f.name,text:txt})).id;layers.push(l);if(!ON)save("pd_kml",layers);drawKml();
   map.fitBounds(L.geoJSON(data).getBounds())}catch(err){alert(err.message)}e.target.value=""};
 $("layers").onclick=e=>{const t=e.target,l=layers.find(x=>x.id==(t.dataset.i||t.dataset.z||t.dataset.d));if(!l)return;
- if(t.dataset.i){l.on=t.checked}else if(t.dataset.z){map.fitBounds(L.geoJSON(l.data).getBounds());return}else layers=layers.filter(x=>x!==l);
- save("pd_kml",layers);drawKml()};
+ if(t.dataset.i){l.on=t.checked}else if(t.dataset.z){map.fitBounds(L.geoJSON(l.data).getBounds());return}else{layers=layers.filter(x=>x!==l);if(ON)api("kml_remove",{id:l.id}).catch(e=>alert(msg(e)))}
+ if(!ON)save("pd_kml",layers);drawKml()};
 
 /* roles + tabs */
 function setRole(a){admin=a;$("r-admin").classList.toggle("on",a);$("r-tech").classList.toggle("on",!a);$("admin-lock").hidden=a;$("admin-body").hidden=!a;showAuth();updateWho();applyProfile();render()}
-$("r-admin").onclick=()=>{const p=prompt("Administrator PIN (demo PIN: 1234)");if(p==="1234"){setRole(true);tab("admin")}else if(p!==null)alert("Incorrect PIN")};
+$("r-admin").onclick=async()=>{const p=prompt(ON?"Administrator PIN":"Administrator PIN (demo PIN: 1234)");if(p===null)return;
+ if(ON){try{adminPin=p;admin=true;await api("login_admin")}catch(e){admin=false;adminPin=null;alert(msg(e));return}admin=false}
+ else if(p!=="1234"){alert("Incorrect PIN");return}
+ setRole(true);tab("admin");pull()};
 $("r-tech").onclick=()=>setRole(false);
 function tab(n){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===n));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===n))}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
 /* technician accounts */
-let users=load("pd_users",[]),cu=users.find(u=>u.id===load("pd_cur",0))||null;
+let users=load("pd_users",[]),cu=load("pd_cu",null);
 const fullName=u=>`${u.first} ${u.mi?u.mi+". ":""}${u.last}`;
 const vis=()=>admin?reports:reports.filter(r=>cu&&r.uid===cu.id);
 opts($("g-prov"),Object.keys(MUNI));
@@ -309,9 +315,9 @@ function regLevel(){const l=$("g-level").value;$("g-provw").hidden=l==="Regional
 $("g-level").onchange=regLevel;regLevel();
 function aTab(t){$("a-in").hidden=t!=="in";$("a-reg").hidden=t!=="reg";document.querySelectorAll(".atabs button").forEach(b=>b.classList.toggle("on",b.dataset.a===t))}
 document.querySelectorAll(".atabs button").forEach(b=>b.onclick=()=>aTab(b.dataset.a));
-function showAuth(){$("auth").hidden=!!cu||admin;
- $("u-sel").innerHTML=users.map(u=>`<option value="${u.id}">${esc(fullName(u))} – ${esc(u.pos)}</option>`).join("");
+function fillUsers(){$("u-sel").innerHTML=users.map(u=>`<option value="${u.id}">${esc(fullName(u))} – ${esc(u.pos)}</option>`).join("");
  $("u-empty").textContent=users.length?"":"No technicians are registered yet. Use the Register tab.";if(!users.length)aTab("reg")}
+function showAuth(){$("auth").hidden=!!cu||admin;if($("auth").hidden)return;if(ON)api("users").then(j=>{users=j.users;fillUsers()}).catch(()=>fillUsers());else fillUsers()}
 function updateWho(){$("who").textContent=admin?"Administrator (all reports)":cu?`${fullName(cu)} · ${cu.pos} · ${cu.level}`:"";$("signout").hidden=!cu}
 function applyProfile(){const u=admin?null:cu;
  opts($("prov"),u&&u.level!=="Regional"?[u.prov]:Object.keys(MUNI));if(u&&u.prov)$("prov").value=u.prov;else $("prov").value="La Union";
@@ -321,19 +327,45 @@ function resetForm(){photos=[];drawing=false;cur=[];polys=[];setDrawUI();redrawS
  if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="No location picked yet.";
  $("farmer").value="";showF();$("fpanel").hidden=true;$("crop").selectedIndex=0;fillPests();$("sev").selectedIndex=0;
  $("area").readOnly=false;$("area").value="0.5";$("notes").value="";$("date").value=new Date().toISOString().slice(0,10);applyProfile()}
-function signIn(u){cu=u;save("pd_cur",u.id);updateWho();showAuth();resetForm();render()}
-$("u-go").onclick=()=>{const u=users.find(x=>String(x.id)===$("u-sel").value);if(!u||u.pin!==$("u-pin").value.trim()){alert("Wrong technician or PIN.");return}$("u-pin").value="";signIn(u)};
+function signIn(u){cu=u;save("pd_cu",u);updateWho();showAuth();resetForm();render();pull().then(push)}
+$("u-go").onclick=async()=>{if(ON){const pin=$("u-pin").value.trim();try{const j=await api("login",{uid:$("u-sel").value,pin});$("u-pin").value="";signIn({...j.user,pin})}catch(x){alert(msg(x))}return}const u=users.find(x=>String(x.id)===$("u-sel").value);if(!u||u.pin!==$("u-pin").value.trim()){alert("Wrong technician or PIN.");return}$("u-pin").value="";signIn(u)};
 $("u-admin").onclick=()=>$("r-admin").click();
-$("a-reg").onsubmit=e=>{e.preventDefault();const g=id=>$(id).value.trim(),l=g("g-level");
+$("a-reg").onsubmit=async e=>{e.preventDefault();const g=id=>$(id).value.trim(),l=g("g-level");
  const u={id:Date.now(),first:g("g-first"),mi:g("g-mi").replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,2),last:g("g-last"),pos:g("g-pos"),level:l,
   region:"Region I",prov:l==="Regional"?"":g("g-prov"),muni:l==="Municipal"?g("g-muni"):"",pin:g("g-pin")};
  if(l==="Municipal"&&!u.muni){alert("Select the municipality.");return}
  if(!/^\d{4}$/.test(u.pin)){alert("The PIN must be 4 digits.");return}
  if(users.some(x=>fullName(x).toLowerCase()===fullName(u).toLowerCase())){alert("This technician is already registered. Use Sign in.");return}
- users.push(u);if(!save("pd_users",users)){users.pop();return}
+ if(ON){try{const j=await api("register",{user:u});Object.assign(u,j.user)}catch(x){alert(msg(x));return}}else{users.push(u);if(!save("pd_users",users)){users.pop();return}}
  e.target.reset();regLevel();$("g-prov").onchange();signIn(u)};
-$("signout").onclick=()=>{cu=null;try{localStorage.removeItem("pd_cur")}catch(e){}setRole(false)};
-render();drawKml();setRole(false);
+$("signout").onclick=()=>{cu=null;try{localStorage.removeItem("pd_cu")}catch(e){}setRole(false)};
+/* Google Sheets / Drive sync */
+let adminPin=null,busy=false,pushing=false,lastErr="";
+const msg=e=>e.message==="Failed to fetch"?"no internet connection":e.message;
+async function api(action,d){const a=admin?{admin:adminPin}:cu?{uid:cu.id,pin:cu.pin}:{};
+ const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action,...a,...d})});
+ const j=await r.json();if(!j.ok)throw new Error(j.error);return j}
+function updSync(){const n=reports.filter(r=>!r.synced&&(admin||(cu&&r.uid===cu.id))).length+farmers.filter(f=>!f.synced).length;
+ $("sync").textContent=!ON?"Demo mode: records stay on this device only.":(n?`${n} item(s) waiting to upload. Press Sync now when you have signal.`:"All records are uploaded to Google Sheets and Drive.")+(lastErr?` (${lastErr})`:"")}
+async function pull(){if(!ON||busy||(!cu&&!admin))return;busy=true;lastErr="";$("sync").textContent="Syncing…";
+ try{const j=await api("pull");
+  reports=reports.filter(r=>!r.synced).concat(j.reports);
+  farmers=j.farmers.concat(farmers.filter(f=>!f.synced&&!j.farmers.some(x=>x.name.toLowerCase()===f.name.toLowerCase()))).sort((a,b)=>a.name.localeCompare(b.name));
+  for(const[c,v]of Object.entries(j.catalog)){CAT[c]=CAT[c]||{pest:[],disease:[]};["pest","disease"].forEach(t=>v[t].forEach(n=>{if(!CAT[c][t].includes(n))CAT[c][t].push(n)}))}
+  const on=Object.fromEntries(layers.map(l=>[l.id,l.on]));layers=[];
+  j.layers.forEach((l,i)=>{try{layers.push({id:l.id,name:l.name,data:kmlToGeoJSON(l.text),on:on[l.id]!==false,color:PAL[i%PAL.length]})}catch(e){}});
+  save("pd_cat",CAT);save("pd_farmers",farmers);save("pd_reports",reports.filter(r=>!r.synced));
+  const fs=$("farmer").value,cs=$("crop").value;fillCrops(cs);fillPests();fillFarmers(fs);drawKml();render();
+ }catch(e){lastErr="sync failed: "+msg(e)}
+ busy=false;updSync()}
+async function push(){if(!ON||pushing||(!cu&&!admin))return;pushing=true;lastErr="";
+ try{for(const f of farmers.filter(x=>!x.synced)){const j=await api("farmer_add",{farmer:f});f.synced=true;f.idPhoto=j.idPhoto}
+  for(const r of reports.filter(x=>!x.synced&&(admin||x.uid===cu.id))){const j=await api("report_add",{report:r});Object.assign(r,j.report)}
+ }catch(e){lastErr="upload paused: "+msg(e)}
+ save("pd_farmers",farmers);save("pd_reports",reports.filter(r=>!r.synced));pushing=false;render();updSync()}
+$("syncb").onclick=()=>push().then(pull);
+window.addEventListener("online",()=>push().then(pull));
+render();drawKml();setRole(false);updSync();if(ON)pull().then(push);
 </script>
 </body>
 </html>
