@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DA RFO I – Crop Pest & Disease Surveillance</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--bg:#f3f5ef;--panel:#fff;--ink:#1d2a1f;--mute:#5d6b5f;--line:#d9dfd2;--brand:#2f5d34;--brand2:#e0a526;
+--low:#e0a526;--mod:#e8782a;--high:#c0392b;--sev:#7b1d1d}
+@media(prefers-color-scheme:dark){:root{--bg:#141a15;--panel:#1d261e;--ink:#e8efe4;--mute:#9fb0a0;--line:#31402f;--brand:#6fb577}}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
+header{background:#2f5d34;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font:700 16px/1.2 Georgia,serif;margin:0;flex:1}
+header small{display:block;font:400 12px "Segoe UI",sans-serif;opacity:.8}
+.role{display:flex;gap:4px;background:rgba(255,255,255,.15);border-radius:6px;padding:3px}
+.role button{border:0;background:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font:inherit}
+.role button.on{background:#fff;color:#2f5d34;font-weight:600}
+main{flex:1;display:grid;grid-template-columns:360px 1fr;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;padding:10px 4px;border:0;background:none;color:var(--mute);cursor:pointer;font:inherit;border-bottom:3px solid transparent}
+.tabs button.on{color:var(--brand);border-color:var(--brand);font-weight:600}
+.pane{display:none;padding:14px;overflow:auto;flex:1}.pane.on{display:block}
+label{display:block;font-weight:600;font-size:13px;margin:10px 0 3px}
+input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:5px;font:inherit;background:var(--bg);color:var(--ink)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{padding:8px 12px;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:5px;cursor:pointer;font:inherit;font-weight:600}
+.btn.ghost{background:none;color:var(--brand)}.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.tabs button:focus-visible{outline:2px solid var(--brand2);outline-offset:1px}
+.hint{color:var(--mute);font-size:12px;margin:4px 0}
+.coord{padding:8px;background:var(--bg);border:1px dashed var(--line);border-radius:5px;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.stats div{background:var(--bg);border-radius:5px;padding:6px;text-align:center}.stats b{display:block;font-size:18px}
+.item{border-bottom:1px solid var(--line);padding:8px 0;cursor:pointer}.item:hover{background:var(--bg)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.item small{color:var(--mute)}
+#map{height:100%;min-height:300px}
+.layer{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.layer span{flex:1;word-break:break-word}
+.lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
+.pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
+@media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Crop Pest &amp; Disease Surveillance<small>Department of Agriculture – Regional Field Office I</small></h1>
+  <div class="role" role="group" aria-label="Role"><button id="r-tech" class="on">Field technician</button><button id="r-admin">Administrator</button></div>
+</header>
+<main>
+<aside>
+  <div class="tabs"><button class="on" data-t="report">Report</button><button data-t="list">Incidents</button><button data-t="admin">Map layers</button></div>
+
+  <section class="pane on" id="report">
+    <p class="hint">Tap the map or use GPS to set the location, then fill in the details.</p>
+    <button class="btn ghost" id="gps" type="button">Use my GPS location</button>
+    <div class="coord" id="coord">No location picked yet.</div>
+    <form id="form" autocomplete="off">
+      <div class="row"><div><label for="crop">Crop</label><select id="crop"></select></div>
+      <div><label for="pest">Pest / disease</label><select id="pest"></select></div></div>
+      <div class="row"><div><label for="sev">Severity</label><select id="sev"><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
+      <div><label for="area">Area affected (ha)</label><input id="area" type="number" min="0" step="0.01" value="0.5"></div></div>
+      <div class="row"><div><label for="prov">Province</label><select id="prov"><option>La Union</option><option>Ilocos Norte</option><option>Ilocos Sur</option><option>Pangasinan</option></select></div>
+      <div><label for="muni">Municipality</label><input id="muni" required></div></div>
+      <div class="row"><div><label for="date">Date observed</label><input id="date" type="date" required></div>
+      <div><label for="tech">Reported by</label><input id="tech" required></div></div>
+      <label for="notes">Notes / action taken</label><textarea id="notes" rows="3"></textarea>
+      <p><button class="btn" type="submit">Save incident</button></p>
+    </form>
+  </section>
+
+  <section class="pane" id="list">
+    <div class="stats"><div><b id="s-all">0</b>Total</div><div><b id="s-high">0</b>High+</div><div><b id="s-ha">0</b>Ha</div><div><b id="s-30">0</b>30 days</div></div>
+    <div class="row"><select id="f-crop" aria-label="Filter crop"></select><select id="f-sev" aria-label="Filter severity"><option value="">All severity</option><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
+    <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button></p>
+    <div id="items"></div>
+  </section>
+
+  <section class="pane" id="admin">
+    <div id="admin-lock" class="lock">Switch to <b>Administrator</b> (top right) to upload KML layers.</div>
+    <div id="admin-body" hidden>
+      <p class="hint">Upload a .kml file (boundaries, irrigated areas, rice zones, etc.). It is added on top of the existing map and kept in this browser.</p>
+      <input type="file" id="kml" accept=".kml">
+      <div id="layers" style="margin-top:10px"></div>
+    </div>
+  </section>
+</aside>
+<div id="map" role="application" aria-label="Surveillance map"></div>
+</main>
+
+<script>
+const CROPS={Rice:["Brown planthopper","Rice blast","Bacterial leaf blight","Stemborer","Rice black bug","Golden apple snail","Tungro","Rice bug"],
+Corn:["Fall armyworm","Corn borer","Downy mildew","Leaf blight"],Tomato:["Fruit borer","Late blight","Bacterial wilt","Leaf curl"],
+Mango:["Mango hopper","Anthracnose","Cecid fly"],Vegetables:["Diamondback moth","Cutworm","Aphids","Fusarium wilt"],Other:["Other pest","Other disease"]};
+const COL={Low:"#e0a526",Moderate:"#e8782a",High:"#c0392b",Severe:"#7b1d1d"};
+const $=id=>document.getElementById(id);
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){alert("Storage is full. Remove a large KML layer.")}};
+let reports=load("pd_reports",[]),layers=load("pd_kml",[]),admin=false,pick=null,pickMarker=null;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* map */
+const map=L.map("map").setView([16.6,120.4],9);
+const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
+const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"});
+osm.addTo(map);
+const incidents=L.layerGroup().addTo(map), kmlGroup=L.layerGroup().addTo(map);
+L.control.layers({"Street map":osm,"Satellite":sat},{"Incidents":incidents,"KML layers":kmlGroup}).addTo(map);
+const pinIcon=c=>L.divIcon({className:"",html:`<div class="pin" style="background:${c}"></div>`,iconSize:[26,26],iconAnchor:[6,26],popupAnchor:[7,-24]});
+
+map.on("click",e=>setPick(e.latlng.lat,e.latlng.lng));
+function setPick(lat,lng){pick={lat,lng};if(pickMarker)pickMarker.setLatLng([lat,lng]);else pickMarker=L.marker([lat,lng],{opacity:.7}).addTo(map);
+ $("coord").textContent=`Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`}
+$("gps").onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{setPick(p.coords.latitude,p.coords.longitude);map.setView([p.coords.latitude,p.coords.longitude],15)},()=>alert("GPS unavailable. Tap the map instead."),{enableHighAccuracy:true}):alert("GPS not supported.");
+
+/* form */
+const fill=(el,arr,all)=>{el.innerHTML=(all?`<option value="">${all}</option>`:"")+arr.map(a=>`<option>${a}</option>`).join("")};
+fill($("crop"),Object.keys(CROPS));fill($("f-crop"),Object.keys(CROPS),"All crops");
+const setPests=()=>fill($("pest"),CROPS[$("crop").value]);$("crop").onchange=setPests;setPests();
+$("date").value=new Date().toISOString().slice(0,10);
+$("form").onsubmit=e=>{e.preventDefault();
+ if(!pick){alert("Pick the incident location on the map first.");return}
+ reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,crop:$("crop").value,pest:$("pest").value,sev:$("sev").value,area:+$("area").value||0,
+  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value});
+ save("pd_reports",reports);$("notes").value="";if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="Saved. Pick another location to report again.";render()};
+
+/* incidents */
+const filtered=()=>reports.filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
+function render(){incidents.clearLayers();const list=filtered();
+ list.forEach(r=>L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
+  `<b>${esc(r.pest)}</b> (${esc(r.crop)})<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}`));
+ const cut=Date.now()-30*864e5;
+ $("s-all").textContent=list.length;$("s-high").textContent=list.filter(r=>r.sev=="High"||r.sev=="Severe").length;
+ $("s-ha").textContent=list.reduce((a,r)=>a+r.area,0).toFixed(1);$("s-30").textContent=list.filter(r=>new Date(r.date)>=cut).length;
+ $("items").innerHTML=list.length?list.map(r=>`<div class="item" data-id="${r.id}"><span class="dot" style="background:${COL[r.sev]}"></span><b>${esc(r.pest)}</b> – ${esc(r.crop)}<br><small>${esc(r.muni)}, ${esc(r.prov)} · ${r.sev} · ${esc(r.date)}</small></div>`).join(""):'<p class="hint">No incidents match. Reports you save appear here.</p>'}
+$("items").onclick=e=>{const it=e.target.closest(".item");if(!it)return;const r=reports.find(x=>x.id==it.dataset.id);map.setView([r.lat,r.lng],15)};
+$("f-crop").onchange=$("f-sev").onchange=render;
+const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()};
+$("csv").onclick=()=>{const h=["id","date","crop","pest","sev","area","prov","muni","lat","lng","tech","notes"];
+ dl("incidents.csv",[h.join(",")].concat(filtered().map(r=>h.map(k=>`"${String(r[k]).replace(/"/g,'""')}"`).join(","))).join("\n"),"text/csv")};
+$("gj").onclick=()=>dl("incidents.geojson",JSON.stringify({type:"FeatureCollection",features:filtered().map(r=>({type:"Feature",geometry:{type:"Point",coordinates:[r.lng,r.lat]},properties:r}))}),"application/geo+json");
+
+/* KML */
+function kmlToGeoJSON(txt){const x=new DOMParser().parseFromString(txt,"text/xml");
+ if(x.querySelector("parsererror"))throw new Error("Invalid KML file");
+ const ll=s=>s.trim().split(/\s+/).map(p=>p.split(",").slice(0,2).map(Number)).filter(p=>p.length==2&&!isNaN(p[0]));
+ const feats=[];
+ x.querySelectorAll("Placemark").forEach(pm=>{
+  const t=n=>(pm.querySelector(n)||{}).textContent||"",props={name:t("name"),description:t("description")};
+  const add=g=>feats.push({type:"Feature",properties:props,geometry:g});
+  pm.querySelectorAll("Point > coordinates").forEach(c=>add({type:"Point",coordinates:ll(c.textContent)[0]}));
+  pm.querySelectorAll("LineString > coordinates").forEach(c=>add({type:"LineString",coordinates:ll(c.textContent)}));
+  pm.querySelectorAll("Polygon").forEach(p=>{const rings=[];const o=p.querySelector("outerBoundaryIs coordinates");if(o)rings.push(ll(o.textContent));
+   p.querySelectorAll("innerBoundaryIs coordinates").forEach(i=>rings.push(ll(i.textContent)));add({type:"Polygon",coordinates:rings})})});
+ if(!feats.length)throw new Error("No placemarks found in this KML");
+ return {type:"FeatureCollection",features:feats}}
+const PAL=["#1f77b4","#9467bd","#17a2b8","#8c564b","#2ca02c","#d62728"];
+function drawKml(){kmlGroup.clearLayers();
+ layers.forEach(l=>{if(!l.on)return;L.geoJSON(l.data,{style:{color:l.color,weight:2,fillOpacity:.15},
+  pointToLayer:(f,p)=>L.circleMarker(p,{radius:5,color:l.color,fillOpacity:.7}),
+  onEachFeature:(f,lyr)=>{const p=f.properties;if(p.name||p.description)lyr.bindPopup(`<b>${esc(p.name)}</b><br>${p.description?esc(p.description.replace(/<[^>]+>/g,"")):""}`)}}).addTo(kmlGroup)});
+ $("layers").innerHTML=layers.length?layers.map(l=>`<div class="layer"><input type="checkbox" data-i="${l.id}" ${l.on?"checked":""} aria-label="Show ${esc(l.name)}"><span style="color:${l.color}">■ ${esc(l.name)}</span><button class="btn ghost" data-z="${l.id}">Zoom</button><button class="btn ghost" data-d="${l.id}">Remove</button></div>`).join(""):'<p class="hint">No KML layers yet. Upload one above.</p>'}
+$("kml").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+ try{const data=kmlToGeoJSON(await f.text());
+  const l={id:Date.now(),name:f.name,data,on:true,color:PAL[layers.length%PAL.length]};layers.push(l);save("pd_kml",layers);drawKml();
+  map.fitBounds(L.geoJSON(data).getBounds())}catch(err){alert(err.message)}e.target.value=""};
+$("layers").onclick=e=>{const t=e.target,l=layers.find(x=>x.id==(t.dataset.i||t.dataset.z||t.dataset.d));if(!l)return;
+ if(t.dataset.i){l.on=t.checked}else if(t.dataset.z){map.fitBounds(L.geoJSON(l.data).getBounds());return}else layers=layers.filter(x=>x!==l);
+ save("pd_kml",layers);drawKml()};
+
+/* roles + tabs */
+function setRole(a){admin=a;$("r-admin").classList.toggle("on",a);$("r-tech").classList.toggle("on",!a);$("admin-lock").hidden=a;$("admin-body").hidden=!a}
+$("r-admin").onclick=()=>{const p=prompt("Administrator PIN (demo PIN: 1234)");if(p==="1234"){setRole(true);tab("admin")}else if(p!==null)alert("Incorrect PIN")};
+$("r-tech").onclick=()=>setRole(false);
+function tab(n){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===n));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===n))}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
+render();drawKml();setRole(false);
+</script>
+</body>
+</html>
