@@ -57,7 +57,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 .ft{margin-top:16px;font-size:10px;color:#444;border-top:1px solid #999;padding-top:4px}
 .num{width:22px;height:22px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 11px/18px sans-serif;text-align:center;box-shadow:0 0 3px #000}
 #pv-map{width:660px;height:470px;margin:0 auto;border:1px solid #000;background:#eee}.pgb{border-top:2px dashed #999;margin:26px 0 12px}
-.pt.list{font-size:10.5px}.cn{font-size:10px;color:#222;margin-top:4px}
+.pt.list{font-size:10px;table-layout:fixed;word-wrap:break-word;overflow-wrap:anywhere}.pt.list td,.pt.list th{padding:3px 4px}.cn{font-size:10px;color:#222;margin-top:4px}
 @page{size:A4;margin:14mm}
 @media print{#pv-page{-webkit-print-color-adjust:exact;print-color-adjust:exact}.pgb{border:0;margin:0;break-before:page;page-break-before:always}body{display:block!important;height:auto!important}body>*:not(#pv){display:none!important}#pv{position:static;background:#fff;overflow:visible}.pvbar{display:none!important}#pv-page{box-shadow:none;margin:0;max-width:none;padding:0}}
 .lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
@@ -476,9 +476,9 @@ async function printIncident(id){const r=reports.find(x=>String(x.id)===String(i
 function summaryHTML(list,f,t,u){const tally={};list.forEach(r=>{const k=r.pest+" ("+r.crop+")";tally[k]=(tally[k]||0)+1});
  const pests=Object.entries(tally).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`${E(k)}: ${n}`).join(" · ");
  return hd("CROP PEST AND DISEASE MONITORING SUMMARY REPORT")+`<p style="margin:6px 0">Reporting period: <b>${E(periodTxt(f,t))}</b>${u?`<br>Technician: <b>${E(fullName(u))}</b>, ${E(u.pos)} (${E(u.level)})`:"<br>Scope: all technicians"}</p>
- <table class="pt list"><tr><th>No.</th><th>Date observed</th><th>Municipality, province</th><th>Coordinates (lat, long)</th><th>Farmer</th><th>Crop</th><th>Pest / disease</th><th>Severity</th><th>Area (ha)</th></tr>
- ${list.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.date)}</td><td>${E(r.muni)}, ${E(r.prov)}</td><td>${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</td><td>${E(r.farmer)}</td><td>${E(r.crop)}</td><td>${E(r.pest)}</td><td>${E(r.sev)}</td><td style="text-align:right">${(+r.area).toFixed(2)}</td></tr>`).join("")||'<tr><td colspan="9">No incidents were recorded in this period.</td></tr>'}
- <tr><td colspan="8" style="text-align:right"><b>Total area affected</b></td><td style="text-align:right"><b>${list.reduce((a,r)=>a+(+r.area||0),0).toFixed(2)}</b></td></tr></table>
+ <table class="pt list"><colgroup><col style="width:4%"><col style="width:9%"><col style="width:12%"><col style="width:11%"><col style="width:10%"><col style="width:6%"><col style="width:10%"><col style="width:7%"><col style="width:6%"><col style="width:25%"></colgroup><tr><th>No.</th><th>Date observed</th><th>Municipality, province</th><th>Coordinates (lat, long)</th><th>Farmer</th><th>Crop</th><th>Pest / disease</th><th>Severity</th><th>Area (ha)</th><th>Notes / action taken</th></tr>
+ ${list.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.date)}</td><td>${E(r.muni)}, ${E(r.prov)}</td><td>${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</td><td>${E(r.farmer)}</td><td>${E(r.crop)}</td><td>${E(r.pest)}</td><td>${E(r.sev)}</td><td style="text-align:right">${(+r.area).toFixed(2)}</td><td>${E(r.notes||"-").replace(/\n/g,"<br>")}</td></tr>`).join("")||'<tr><td colspan="10">No incidents were recorded in this period.</td></tr>'}
+ <tr><td colspan="8" style="text-align:right"><b>Total area affected</b></td><td style="text-align:right"><b>${list.reduce((a,r)=>a+(+r.area||0),0).toFixed(2)}</b></td><td></td></tr></table>
  <p style="margin:8px 0"><b>Total incidents:</b> ${list.length} &nbsp;·&nbsp; ${["Low","Moderate","High","Severe"].map(k=>k+": "+list.filter(r=>r.sev===k).length).join(" · ")}</p>${pests?`<p style="margin:4px 0"><b>Pests and diseases reported:</b> ${pests}</p>`:""}
  <p class="cert">I certify that the information in this report is true and correct, based on my field observations.</p>${sigs(u&&fullName(u),u&&u.pos)}
  <div class="ft">Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`
