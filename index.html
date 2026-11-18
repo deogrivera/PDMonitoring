@@ -115,7 +115,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
       <h3>By pest / disease (top 10)</h3><div class="bars" id="d-pest"></div>
       <h3>By municipality (top 10)</h3><div class="bars" id="d-muni"></div>
       <h3>By crop</h3><div class="bars" id="d-crops"></div>
-      <p class="hint">Heat map: the redder the area, the more and the more severe the incidents. Filters above apply to every chart and to the heat map.</p>
+      <p class="hint">Heat map: the redder the area, the more and the more severe the incidents. Filters above apply to every chart, the map pins and the heat map.</p>
     </div>
   </section>
 
@@ -267,7 +267,7 @@ $("form").onsubmit=e=>{e.preventDefault();
  resetForm();$("coord").textContent="Report saved. The form is cleared for the next report.";render();push()};
 
 /* incidents */
-const filtered=()=>vis().filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
+const filtered=()=>vis().filter(r=>(!admin||dashPass(r))&&(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
 function render(){renderDash();incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
  list.forEach(r=>{const ph=r.photos||[];
   (r.polys||[]).forEach(p=>L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.3}).addTo(incidents).bindTooltip(`${esc(r.pest)} · ${polyHa(p).toFixed(2)} ha`));
@@ -362,19 +362,19 @@ const SW={Low:.25,Moderate:.5,High:.75,Severe:1};let curMode="pins";
 function setMode(m){if(m===curMode)return;m!=="heat"?incidents.addTo(map):map.removeLayer(incidents);m!=="pins"?heat.addTo(map):map.removeLayer(heat);curMode=m}
 function bars(id,e,col){const mx=Math.max(1,...e.map(x=>x[1]));
  $(id).innerHTML=e.length?e.map(([k,n])=>`<div class="b"><span title="${esc(k)}">${esc(k)}</span><i style="width:${n/mx*100}%;background:${col?col(k):"var(--brand)"}"></i><b>${n}</b></div>`).join(""):'<p class="hint">No data for these filters.</p>'}
+const dashPass=r=>{const f=$("d-from").value,t=$("d-to").value,c=$("d-crop").value,p=$("d-prov").value;return(!f||r.date>=f)&&(!t||r.date<=t)&&(!c||r.crop===c)&&(!p||r.prov===p)};
 function renderDash(){
  const nc=Object.keys(CAT).length+1;if($("d-crop").options.length!==nc)opts($("d-crop"),Object.keys(CAT).sort(),"All crops",$("d-crop").value);
  if(!$("d-prov").options.length)opts($("d-prov"),Object.keys(MUNI),"All provinces");
  $("dash-lock").hidden=admin;$("dash-body").hidden=!admin;
  if(!admin){heat.setLatLngs([]);$("d-map").value="pins";setMode("pins");return}
- const f=$("d-from").value,t=$("d-to").value,c=$("d-crop").value,p=$("d-prov").value;
- const set=vis().filter(r=>(!f||r.date>=f)&&(!t||r.date<=t)&&(!c||r.crop===c)&&(!p||r.prov===p));
+ const set=vis().filter(dashPass);
  const tally=fn=>{const m={};set.forEach(r=>{const k=fn(r);m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
  $("d-kpi").innerHTML=[["Incidents",set.length],["Hectares",set.reduce((a,r)=>a+r.area,0).toFixed(1)],["High+Severe",set.filter(r=>r.sev=="High"||r.sev=="Severe").length],["Farmers",new Set(set.map(r=>r.farmer)).size]].map(([l,v])=>`<div><b>${v}</b>${l}</div>`).join("");
  bars("d-sev",["Low","Moderate","High","Severe"].map(k=>[k,set.filter(r=>r.sev===k).length]),k=>COL[k]);
  bars("d-pest",tally(r=>r.pest).slice(0,10));bars("d-muni",tally(r=>r.muni+", "+r.prov).slice(0,10));bars("d-crops",tally(r=>r.crop));
  heat.setLatLngs(set.map(r=>[r.lat,r.lng,SW[r.sev]||.5]));setMode($("d-map").value)}
-["d-from","d-to","d-crop","d-prov","d-map"].forEach(i=>$(i).onchange=renderDash);
+["d-from","d-to","d-crop","d-prov","d-map"].forEach(i=>$(i).onchange=render);
 
 /* Google Sheets / Drive sync */
 let adminPin=null,busy=false,pushing=false,lastErr="";
