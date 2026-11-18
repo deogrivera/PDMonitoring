@@ -6,6 +6,7 @@
 <title>DA RFO I – Crop Pest & Disease Surveillance</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <style>
 :root{--bg:#f3f5ef;--panel:#fff;--ink:#1d2a1f;--mute:#5d6b5f;--line:#d9dfd2;--brand:#2f5d34;--brand2:#e0a526;
 --low:#e0a526;--mod:#e8782a;--high:#c0392b;--sev:#7b1d1d}
@@ -44,6 +45,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 .auth{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:12px}.auth[hidden]{display:none}
 .card{background:var(--panel);width:min(430px,100%);max-height:92vh;overflow:auto;border-radius:8px;padding:16px 18px}.card h2{margin:0 0 8px;font:700 17px Georgia,serif}
 .atabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px}.atabs button{flex:1;padding:8px;border:0;background:none;color:var(--mute);cursor:pointer;font:inherit;border-bottom:3px solid transparent}.atabs button.on{color:var(--brand);border-color:var(--brand);font-weight:600}
+.pane h3{font:700 13px "Segoe UI",sans-serif;margin:16px 0 4px}.bars .b{display:grid;grid-template-columns:130px 1fr 30px;gap:6px;align-items:center;font-size:12px;margin:3px 0}.bars .b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bars .b i{display:block;height:12px;border-radius:3px;min-width:2px}.bars .b b{text-align:right}
 .lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
 @media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
@@ -57,7 +59,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 </header>
 <main>
 <aside>
-  <div class="tabs"><button class="on" data-t="report">Report</button><button data-t="list">Incidents</button><button data-t="admin">Map layers</button></div>
+  <div class="tabs"><button class="on" data-t="report">Report</button><button data-t="list">Incidents</button><button data-t="dash">Dashboard</button><button data-t="admin">Map layers</button></div>
 
   <section class="pane on" id="report">
     <p class="hint">Tap the map or use GPS to set the location, then fill in the details.</p>
@@ -100,6 +102,21 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
     <div class="row"><select id="f-crop" aria-label="Filter crop"></select><select id="f-sev" aria-label="Filter severity"><option value="">All severity</option><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
     <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button></p>
     <p class="hint" id="sync"></p><p><button class="btn ghost" id="syncb" type="button">Sync now</button></p><div id="items"></div>
+  </section>
+
+  <section class="pane" id="dash">
+    <div id="dash-lock" class="lock">Switch to <b>Administrator</b> (top right) to view the dashboard.</div>
+    <div id="dash-body" hidden>
+      <div class="row"><div><label for="d-from">From</label><input type="date" id="d-from"></div><div><label for="d-to">To</label><input type="date" id="d-to"></div></div>
+      <div class="row"><div><label for="d-crop">Crop</label><select id="d-crop"></select></div><div><label for="d-prov">Province</label><select id="d-prov"></select></div></div>
+      <label for="d-map">Map view</label><select id="d-map"><option value="pins">Incident pins</option><option value="heat">Severity heat map</option><option value="both">Pins and heat map</option></select>
+      <div class="stats" id="d-kpi" style="margin-top:12px"></div>
+      <h3>By severity</h3><div class="bars" id="d-sev"></div>
+      <h3>By pest / disease (top 10)</h3><div class="bars" id="d-pest"></div>
+      <h3>By municipality (top 10)</h3><div class="bars" id="d-muni"></div>
+      <h3>By crop</h3><div class="bars" id="d-crops"></div>
+      <p class="hint">Heat map: the redder the area, the more and the more severe the incidents. Filters above apply to every chart and to the heat map.</p>
+    </div>
   </section>
 
   <section class="pane" id="admin">
@@ -251,7 +268,7 @@ $("form").onsubmit=e=>{e.preventDefault();
 
 /* incidents */
 const filtered=()=>vis().filter(r=>(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
-function render(){incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
+function render(){renderDash();incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
  list.forEach(r=>{const ph=r.photos||[];
   (r.polys||[]).forEach(p=>L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.3}).addTo(incidents).bindTooltip(`${esc(r.pest)} · ${polyHa(p).toFixed(2)} ha`));
   L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
@@ -301,7 +318,7 @@ function setRole(a){admin=a;$("r-admin").classList.toggle("on",a);$("r-tech").cl
 $("r-admin").onclick=async()=>{const p=prompt(ON?"Administrator PIN":"Administrator PIN (demo PIN: 1234)");if(p===null)return;
  if(ON){try{adminPin=p;admin=true;await api("login_admin")}catch(e){admin=false;adminPin=null;alert(msg(e));return}admin=false}
  else if(p!=="1234"){alert("Incorrect PIN");return}
- setRole(true);tab("admin");pull()};
+ setRole(true);tab("dash");pull()};
 $("r-tech").onclick=()=>setRole(false);
 function tab(n){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===n));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===n))}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
@@ -339,6 +356,26 @@ $("a-reg").onsubmit=async e=>{e.preventDefault();const g=id=>$(id).value.trim(),
  if(ON){try{const j=await api("register",{user:u});Object.assign(u,j.user)}catch(x){alert(msg(x));return}}else{users.push(u);if(!save("pd_users",users)){users.pop();return}}
  e.target.reset();regLevel();$("g-prov").onchange();signIn(u)};
 $("signout").onclick=()=>{cu=null;try{localStorage.removeItem("pd_cu")}catch(e){}setRole(false)};
+/* admin dashboard */
+const heat=window.L&&L.heatLayer?L.heatLayer([],{radius:28,blur:22,maxZoom:15,minOpacity:.35,gradient:{.3:"#e0a526",.6:"#e8782a",.85:"#c0392b",1:"#7b1d1d"}}):Object.assign(L.layerGroup(),{setLatLngs(){}});
+const SW={Low:.25,Moderate:.5,High:.75,Severe:1};let curMode="pins";
+function setMode(m){if(m===curMode)return;m!=="heat"?incidents.addTo(map):map.removeLayer(incidents);m!=="pins"?heat.addTo(map):map.removeLayer(heat);curMode=m}
+function bars(id,e,col){const mx=Math.max(1,...e.map(x=>x[1]));
+ $(id).innerHTML=e.length?e.map(([k,n])=>`<div class="b"><span title="${esc(k)}">${esc(k)}</span><i style="width:${n/mx*100}%;background:${col?col(k):"var(--brand)"}"></i><b>${n}</b></div>`).join(""):'<p class="hint">No data for these filters.</p>'}
+function renderDash(){
+ const nc=Object.keys(CAT).length+1;if($("d-crop").options.length!==nc)opts($("d-crop"),Object.keys(CAT).sort(),"All crops",$("d-crop").value);
+ if(!$("d-prov").options.length)opts($("d-prov"),Object.keys(MUNI),"All provinces");
+ $("dash-lock").hidden=admin;$("dash-body").hidden=!admin;
+ if(!admin){heat.setLatLngs([]);$("d-map").value="pins";setMode("pins");return}
+ const f=$("d-from").value,t=$("d-to").value,c=$("d-crop").value,p=$("d-prov").value;
+ const set=vis().filter(r=>(!f||r.date>=f)&&(!t||r.date<=t)&&(!c||r.crop===c)&&(!p||r.prov===p));
+ const tally=fn=>{const m={};set.forEach(r=>{const k=fn(r);m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+ $("d-kpi").innerHTML=[["Incidents",set.length],["Hectares",set.reduce((a,r)=>a+r.area,0).toFixed(1)],["High+Severe",set.filter(r=>r.sev=="High"||r.sev=="Severe").length],["Farmers",new Set(set.map(r=>r.farmer)).size]].map(([l,v])=>`<div><b>${v}</b>${l}</div>`).join("");
+ bars("d-sev",["Low","Moderate","High","Severe"].map(k=>[k,set.filter(r=>r.sev===k).length]),k=>COL[k]);
+ bars("d-pest",tally(r=>r.pest).slice(0,10));bars("d-muni",tally(r=>r.muni+", "+r.prov).slice(0,10));bars("d-crops",tally(r=>r.crop));
+ heat.setLatLngs(set.map(r=>[r.lat,r.lng,SW[r.sev]||.5]));setMode($("d-map").value)}
+["d-from","d-to","d-crop","d-prov","d-map"].forEach(i=>$(i).onchange=renderDash);
+
 /* Google Sheets / Drive sync */
 let adminPin=null,busy=false,pushing=false,lastErr="";
 const msg=e=>e.message==="Failed to fetch"?"no internet connection":e.message;
