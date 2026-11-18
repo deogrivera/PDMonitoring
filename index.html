@@ -55,8 +55,11 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 .sec2{font-weight:700;margin:12px 0 4px}.phs{display:flex;gap:8px}.phs figure{margin:0;width:33%;page-break-inside:avoid}.phs img{width:100%;height:150px;object-fit:cover;border:1px solid #000}.phs figcaption{font-size:10px}
 .cert{margin:14px 0 0}.sg{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:6px;page-break-inside:avoid}.sg .sl{border-bottom:1px solid #000;margin-top:48px;text-align:center;font-weight:700;min-height:16px}.sg div div+*{font-size:11px}
 .ft{margin-top:16px;font-size:10px;color:#444;border-top:1px solid #999;padding-top:4px}
+.num{width:22px;height:22px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 11px/18px sans-serif;text-align:center;box-shadow:0 0 3px #000}
+#pv-map{width:660px;height:470px;margin:0 auto;border:1px solid #000;background:#eee}.pgb{border-top:2px dashed #999;margin:26px 0 12px}
+.pt.list{font-size:10.5px}.cn{font-size:10px;color:#222;margin-top:4px}
 @page{size:A4;margin:14mm}
-@media print{body{display:block!important;height:auto!important}body>*:not(#pv){display:none!important}#pv{position:static;background:#fff;overflow:visible}.pvbar{display:none!important}#pv-page{box-shadow:none;margin:0;max-width:none;padding:0}}
+@media print{#pv-page{-webkit-print-color-adjust:exact;print-color-adjust:exact}.pgb{border:0;margin:0;break-before:page;page-break-before:always}body{display:block!important;height:auto!important}body>*:not(#pv){display:none!important}#pv{position:static;background:#fff;overflow:visible}.pvbar{display:none!important}#pv-page{box-shadow:none;margin:0;max-width:none;padding:0}}
 .lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
 @media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
@@ -110,8 +113,13 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 
   <section class="pane" id="list">
     <div class="stats"><div><b id="s-all">0</b>Total</div><div><b id="s-high">0</b>High+</div><div><b id="s-ha">0</b>Ha</div><div><b id="s-30">0</b>30 days</div></div>
+    <div class="mini" style="margin:0 0 10px"><b>Generate report</b>
+      <div class="row"><div><label for="r-from">From</label><input type="date" id="r-from"></div><div><label for="r-to">To</label><input type="date" id="r-to"></div></div>
+      <label for="r-preset">Quick period</label><select id="r-preset"><option value="custom">Custom dates</option><option value="month">This month</option><option value="last">Last month</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="year">This year</option><option value="all">All dates</option></select>
+      <p style="margin:8px 0 0"><button class="btn" id="psum" type="button">Generate report</button></p>
+      <div class="hint">Lists every incident observed in the period, with coordinates and a location map page.</div></div>
     <div class="row"><select id="f-crop" aria-label="Filter crop"></select><select id="f-sev" aria-label="Filter severity"><option value="">All severity</option><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
-    <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button> <button class="btn ghost" id="psum" type="button">Print summary</button></p>
+    <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button></p>
     <p class="hint" id="sync"></p><p><button class="btn ghost" id="syncb" type="button">Sync now</button></p><div id="items"></div>
   </section>
 
@@ -169,7 +177,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
   </form>
 </div></div>
 <style id="pv-ps"></style>
-<div id="pv" hidden><div class="pvbar"><button class="btn" id="pv-print" type="button">Print</button><span>Paper:</span><select id="pv-size" aria-label="Paper size"><option value="A4">A4</option><option value="Letter">Letter</option><option value="Long">Long (8.5 x 13 in)</option></select><button class="btn ghost" id="pv-close" type="button">Close</button></div><div id="pv-page"></div></div>
+<div id="pv" hidden><div class="pvbar"><button class="btn" id="pv-print" type="button">Print</button><span>Paper:</span><select id="pv-size" aria-label="Paper size"><option value="A4">A4</option><option value="Letter">Letter</option><option value="Long">Long (8.5 x 13 in)</option></select><span>Map:</span><select id="pv-base" aria-label="Map type"><option value="street">Street</option><option value="sat">Satellite</option></select><button class="btn ghost" id="pv-close" type="button">Close</button><span id="pv-status"></span></div><div id="pv-page"></div></div>
 <script>
 // Paste the Apps Script Web app URL here (see Code.gs). While it is unchanged, the app runs in local demo mode.
 const API_URL="https://script.google.com/macros/s/AKfycbzXWRRZOYmhf63oYIsXL2w54abeG83pe9PjZySp2mBsurLzQAdlGg4FNrn3t5HN-9j_/exec";
@@ -419,9 +427,30 @@ function renderDash(){
 
 /* printable reports */
 const E=esc,PAPER={A4:"A4",Letter:"letter",Long:"8.5in 13in"};
+const TILES={street:["https://tile.openstreetmap.org/{z}/{x}/{y}.png","© OpenStreetMap"],sat:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","Esri"]};
+let pvMap=null,pvReady=true,lastShow=null;
 const paper=()=>{$("pv-ps").textContent=`@page{size:${PAPER[$("pv-size").value]};margin:14mm}`};$("pv-size").onchange=paper;paper();
-const showPrint=h=>{$("pv-page").innerHTML=h;$("pv").hidden=false;$("pv").scrollTop=0};
-$("pv-close").onclick=()=>{$("pv").hidden=true};$("pv-print").onclick=()=>window.print();
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const fmtD=d=>d?new Date(d+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"";
+const dms=(v,p,n)=>{const a=Math.abs(v),d=Math.floor(a),m=Math.floor((a-d)*60),x=((a-d)*60-m)*60;return `${d}°${String(m).padStart(2,"0")}'${x.toFixed(1).padStart(4,"0")}"${v>=0?p:n}`};
+const dmsPair=(la,ln)=>dms(la,"N","S")+" "+dms(ln,"E","W");
+const periodTxt=(f,t)=>f&&t?`${fmtD(f)} to ${fmtD(t)}`:f?`from ${fmtD(f)}`:t?`up to ${fmtD(t)}`:"All dates";
+function closePrint(){$("pv").hidden=true;if(pvMap){pvMap.remove();pvMap=null}lastShow=null}
+$("pv-close").onclick=closePrint;
+$("pv-print").onclick=()=>{if(!pvReady&&!confirm("The map is still loading. Print anyway?"))return;window.print()};
+$("pv-base").onchange=()=>{if(lastShow)showPrint(lastShow)};
+const numIcon=(n,c)=>L.divIcon({className:"",html:`<div class="num" style="background:${c}">${n}</div>`,iconSize:[22,22],iconAnchor:[11,11]});
+function drawPrintMap(items,single){if(pvMap){pvMap.remove();pvMap=null}
+ if(!$("pv-map")||!items.length){pvReady=true;$("pv-status").textContent="";return}
+ pvMap=L.map("pv-map",{zoomControl:false});const T=TILES[$("pv-base").value],tl=L.tileLayer(T[0],{maxZoom:19,attribution:T[1]}).addTo(pvMap);
+ pvReady=false;$("pv-status").textContent="Loading map… wait until it appears before printing";tl.on("load",()=>{pvReady=true;$("pv-status").textContent="Map ready"});
+ const b=L.latLngBounds([]);
+ items.forEach(({r,n})=>{(r.polys||[]).forEach(p=>{L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.25}).addTo(pvMap);p.forEach(c=>b.extend(c))});
+  L.marker([r.lat,r.lng],{icon:numIcon(n,COL[r.sev])}).addTo(pvMap);b.extend([r.lat,r.lng]);
+  if(single)(r.photos||[]).forEach((p,i)=>{L.marker([p.lat,p.lng],{icon:L.divIcon({className:"",html:`<div class="cam" style="font-size:10px;font-weight:700">P${i+1}</div>`,iconSize:[24,24]})}).addTo(pvMap);b.extend([p.lat,p.lng])})});
+ L.control.scale({imperial:false}).addTo(pvMap);pvMap.fitBounds(b,{padding:[40,40],maxZoom:17});setTimeout(()=>pvMap.invalidateSize(),60)}
+function showPrint(build){lastShow=build;const o=build();$("pv-page").innerHTML=o.html;$("pv").hidden=false;$("pv").scrollTop=0;drawPrintMap(o.items,o.single)}
+const mapPage=(title,note)=>`<div class="pgb"></div><div class="lh"><div style="font-weight:700;font-size:13px">ANNEX: LOCATION MAP</div></div><p style="text-align:center;margin:4px 0 6px">${title}</p><div id="pv-map"></div><p class="cn" style="text-align:center">${note}</p>`;
 const hd=t=>`<div class="lh"><div style="font-size:11px">Republic of the Philippines</div><div style="font-weight:700;font-size:14px">DEPARTMENT OF AGRICULTURE</div><div style="font-weight:700">REGIONAL FIELD OFFICE I</div><div style="font-size:11px">San Fernando City, La Union</div></div><h1>${t}</h1>`;
 async function userFor(r){if(cu&&r.uid===cu.id)return cu;let u=users.find(x=>String(x.id)===String(r.uid));
  if(!u&&ON&&(cu||admin)){try{users=(await api("users")).users;u=users.find(x=>String(x.id)===String(r.uid))}catch(e){}}return u||null}
@@ -429,28 +458,40 @@ function sigs(name,pos){return `<div class="sg"><div><b>Prepared by:</b><div cla
  <div><b>Noted / verified by:</b><div class="sl">&nbsp;</div><div>Signature over printed name (Supervisor)<br>Position: ______________________<br>Date signed: ________________</div></div></div>`}
 function sketch(r){const P=r.polys||[];if(!P.length)return"";const pts=P.flat(),la=pts.map(p=>p[0]),ln=pts.map(p=>p[1]),a=Math.min(...la),b=Math.max(...la),c=Math.min(...ln),d=Math.max(...ln),k=Math.cos((a+b)/2*Math.PI/180);
  const w=(d-c)*k||1e-5,h=b-a||1e-5,sc=Math.min(300/w,170/h),X=g=>10+(g-c)*k*sc,Y=t=>10+(b-t)*sc;
- return `<p class="sec2">F. Sketch of affected area (from map delineation, not to scale)</p><svg width="${(w*sc+20).toFixed(0)}" height="${(h*sc+20).toFixed(0)}" style="border:1px solid #000">`+
-  P.map(p=>`<polygon points="${p.map(q=>X(q[1]).toFixed(1)+","+Y(q[0]).toFixed(1)).join(" ")}" fill="#f4b6b0" stroke="#c0392b" stroke-width="1.5"/>`).join("")+`<text x="${(w*sc+4).toFixed(0)}" y="16" font-size="11">N&#8593;</text></svg>`}
+ return `<p class="sec2">F. Delineated affected area</p><svg width="${(w*sc+20).toFixed(0)}" height="${(h*sc+20).toFixed(0)}" style="border:1px solid #000">`+
+  P.map(p=>`<polygon points="${p.map(q=>X(q[1]).toFixed(1)+","+Y(q[0]).toFixed(1)).join(" ")}" fill="#f4b6b0" stroke="#c0392b" stroke-width="1.5"/>`).join("")+`<text x="${(w*sc+4).toFixed(0)}" y="16" font-size="11">N&#8593;</text></svg>
+  <div class="cn"><b>Corner coordinates (latitude, longitude):</b><br>${P.map((p,i)=>`Area ${i+1} (${polyHa(p).toFixed(2)} ha): `+p.map((q,j)=>`C${j+1} ${q[0].toFixed(5)}, ${q[1].toFixed(5)}`).join("; ")).join("<br>")}</div>`}
 function incidentHTML(r,u){const no=`PD-${String(r.date).slice(0,4)}-${String(r.id).slice(-6)}`,P=r.photos||[],row=(k,v)=>`<tr><th>${k}</th><td>${v}</td></tr>`,src={photo:"GPS in photo",device:"GPS from device",map:"map pin"};
  return hd("CROP PEST AND DISEASE INCIDENT REPORT")+`<p style="text-align:right;margin:4px 0">Report No.: <b>${no}</b></p><table class="pt">
- <tr><td colspan="2" class="sec">A. Reporter</td></tr>${row("Name of technician",E(r.tech))}${row("Position / level",u?E(u.pos)+" · "+E(u.level):"")}${row("Date observed",E(r.date))}${row("Date encoded",new Date(+r.id).toLocaleDateString("en-PH"))}
- <tr><td colspan="2" class="sec">B. Location</td></tr>${row("Municipality / province",E(r.muni)+", "+E(r.prov))}${row("GPS coordinates",r.lat.toFixed(5)+", "+r.lng.toFixed(5))}
+ <tr><td colspan="2" class="sec">A. Reporter</td></tr>${row("Name of technician",E(r.tech))}${row("Position / level",u?E(u.pos)+" · "+E(u.level):"")}${row("Date observed",E(fmtD(r.date)||r.date))}${row("Date encoded",new Date(+r.id).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}))}
+ <tr><td colspan="2" class="sec">B. Location of the incident</td></tr>${row("Municipality / province",E(r.muni)+", "+E(r.prov))}${row("Coordinates (decimal)","Latitude: <b>"+r.lat.toFixed(6)+"</b> &nbsp; Longitude: <b>"+r.lng.toFixed(6)+"</b>")}${row("Coordinates (DMS)",dmsPair(r.lat,r.lng))}
  <tr><td colspan="2" class="sec">C. Farmer</td></tr>${row("Name of farmer",E(r.farmer))}${row("RSBSA",r.rsbsa?"&#9745; Registered &nbsp;&nbsp; &#9744; Not registered":"&#9744; Registered &nbsp;&nbsp; &#9745; Not registered")}
  <tr><td colspan="2" class="sec">D. Incident</td></tr>${row("Crop",E(r.crop))}${row("Pest / disease",E(r.pest)+" ("+E(r.type)+")")}${row("Severity",E(r.sev))}
  ${row("Area affected",(+r.area).toFixed(2)+" ha"+((r.polys||[]).length?` (delineated on map: ${r.polys.length} area${r.polys.length>1?"s":""})`:" (estimated by technician)"))}${row("Notes / action taken",E(r.notes||"None").replace(/\n/g,"<br>"))}</table>
  <p class="sec2">E. Photographic evidence (geotagged)</p><div class="phs">${P.map((p,i)=>`<figure><img src="${p.d||p.url}" alt="Photo ${i+1}"><figcaption>Photo ${i+1}: ${(+p.lat).toFixed(5)}, ${(+p.lng).toFixed(5)} (${src[p.src]||E(p.src||"")})</figcaption></figure>`).join("")||"<i>No photos.</i>"}</div>
  ${sketch(r)}<p class="cert">I certify that the information in this report is true and correct, based on my field observation.</p>${sigs(r.tech,u&&u.pos)}
- <div class="ft">Report No. ${no} · Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`}
-async function printIncident(id){const r=reports.find(x=>String(x.id)===String(id));if(!r)return;showPrint(incidentHTML(r,await userFor(r)))}
-function summaryHTML(list,u){list=list.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));const ds=list.map(r=>String(r.date));
- return hd("CROP PEST AND DISEASE MONITORING SUMMARY REPORT")+`<p style="margin:6px 0">Period covered: <b>${ds.length?E(ds[0])+" to "+E(ds[ds.length-1]):"-"}</b>${u?` &nbsp;·&nbsp; Technician: <b>${E(fullName(u))}</b>, ${E(u.pos)} (${E(u.level)})`:""}</p>
- <table class="pt list"><tr><th>No.</th><th>Date</th><th>Municipality, province</th><th>Farmer</th><th>Crop</th><th>Pest / disease</th><th>Severity</th><th>Area (ha)</th></tr>
- ${list.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.date)}</td><td>${E(r.muni)}, ${E(r.prov)}</td><td>${E(r.farmer)}</td><td>${E(r.crop)}</td><td>${E(r.pest)}</td><td>${E(r.sev)}</td><td style="text-align:right">${(+r.area).toFixed(2)}</td></tr>`).join("")||'<tr><td colspan="8">No incidents.</td></tr>'}
- <tr><td colspan="7" style="text-align:right"><b>Total area affected</b></td><td style="text-align:right"><b>${list.reduce((a,r)=>a+(+r.area||0),0).toFixed(2)}</b></td></tr></table>
- <p style="margin:8px 0"><b>Total incidents:</b> ${list.length} &nbsp;·&nbsp; ${["Low","Moderate","High","Severe"].map(k=>k+": "+list.filter(r=>r.sev===k).length).join(" · ")}</p>
+ <div class="ft">Report No. ${no} · Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`
+ +mapPage(`${E(r.pest)} on ${E(r.crop)} · ${E(r.muni)}, ${E(r.prov)} · ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`,"Numbered circle: incident location, colored by severity. P1 to P3: geotagged photo locations. Shaded area: delineated affected area. Map data © OpenStreetMap / Esri.")}
+async function printIncident(id){const r=reports.find(x=>String(x.id)===String(id));if(!r)return;const u=await userFor(r);showPrint(()=>({html:incidentHTML(r,u),items:[{r,n:1}],single:true}))}
+function summaryHTML(list,f,t,u){const tally={};list.forEach(r=>{const k=r.pest+" ("+r.crop+")";tally[k]=(tally[k]||0)+1});
+ const pests=Object.entries(tally).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`${E(k)}: ${n}`).join(" · ");
+ return hd("CROP PEST AND DISEASE MONITORING SUMMARY REPORT")+`<p style="margin:6px 0">Reporting period: <b>${E(periodTxt(f,t))}</b>${u?`<br>Technician: <b>${E(fullName(u))}</b>, ${E(u.pos)} (${E(u.level)})`:"<br>Scope: all technicians"}</p>
+ <table class="pt list"><tr><th>No.</th><th>Date observed</th><th>Municipality, province</th><th>Coordinates (lat, long)</th><th>Farmer</th><th>Crop</th><th>Pest / disease</th><th>Severity</th><th>Area (ha)</th></tr>
+ ${list.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.date)}</td><td>${E(r.muni)}, ${E(r.prov)}</td><td>${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</td><td>${E(r.farmer)}</td><td>${E(r.crop)}</td><td>${E(r.pest)}</td><td>${E(r.sev)}</td><td style="text-align:right">${(+r.area).toFixed(2)}</td></tr>`).join("")||'<tr><td colspan="9">No incidents were recorded in this period.</td></tr>'}
+ <tr><td colspan="8" style="text-align:right"><b>Total area affected</b></td><td style="text-align:right"><b>${list.reduce((a,r)=>a+(+r.area||0),0).toFixed(2)}</b></td></tr></table>
+ <p style="margin:8px 0"><b>Total incidents:</b> ${list.length} &nbsp;·&nbsp; ${["Low","Moderate","High","Severe"].map(k=>k+": "+list.filter(r=>r.sev===k).length).join(" · ")}</p>${pests?`<p style="margin:4px 0"><b>Pests and diseases reported:</b> ${pests}</p>`:""}
  <p class="cert">I certify that the information in this report is true and correct, based on my field observations.</p>${sigs(u&&fullName(u),u&&u.pos)}
- <div class="ft">Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`}
-$("psum").onclick=()=>showPrint(summaryHTML(filtered(),admin?null:cu));
+ <div class="ft">Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`
+ +(list.length?mapPage("Incident locations · "+E(periodTxt(f,t)),"Numbers match the No. column of the table. Circle color shows severity: yellow Low, orange Moderate, red High, dark red Severe. Map data © OpenStreetMap / Esri."):"")}
+function preset(){const v=$("r-preset").value,n=new Date(),y=n.getFullYear(),m=n.getMonth();let a,b;
+ if(v==="month"){a=new Date(y,m,1);b=new Date(y,m+1,0)}else if(v==="last"){a=new Date(y,m-1,1);b=new Date(y,m,0)}else if(v==="7"){b=n;a=new Date(+n-6*864e5)}
+ else if(v==="30"){b=n;a=new Date(+n-29*864e5)}else if(v==="year"){a=new Date(y,0,1);b=new Date(y,11,31)}else if(v==="all"){$("r-from").value="";$("r-to").value="";return}else return;
+ $("r-from").value=ymd(a);$("r-to").value=ymd(b)}
+$("r-preset").onchange=preset;$("r-preset").value="month";preset();
+["r-from","r-to"].forEach(i=>$(i).onchange=()=>{$("r-preset").value="custom"});
+$("psum").onclick=()=>{const f=$("r-from").value,t=$("r-to").value;if(f&&t&&f>t){alert("The start date must be on or before the end date.");return}
+ const list=vis().filter(r=>(!f||String(r.date)>=f)&&(!t||String(r.date)<=t)).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+ showPrint(()=>({html:summaryHTML(list,f,t,admin?null:cu),items:list.map((r,i)=>({r,n:i+1})),single:false}))};
 
 /* Google Sheets / Drive sync */
 let adminPin=null,busy=false,pushing=false,lastErr="";
