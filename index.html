@@ -47,6 +47,16 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 .atabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px}.atabs button{flex:1;padding:8px;border:0;background:none;color:var(--mute);cursor:pointer;font:inherit;border-bottom:3px solid transparent}.atabs button.on{color:var(--brand);border-color:var(--brand);font-weight:600}
 .pane h3{font:700 13px "Segoe UI",sans-serif;margin:16px 0 4px}.bars .b{display:grid;grid-template-columns:130px 1fr 30px;gap:6px;align-items:center;font-size:12px;margin:3px 0}.bars .b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bars .b i{display:block;height:12px;border-radius:3px;min-width:2px}.bars .b b{text-align:right}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.alert{border:1px solid var(--line);border-left:5px solid #c0392b;border-radius:5px;padding:8px;margin:6px 0;background:var(--bg)}.alert.crit{border-left-color:#7b1d1d}.alert b{color:#c0392b}.alert.crit b{color:#7b1d1d}
+#pv{position:fixed;inset:0;background:#e5e7e2;overflow:auto;z-index:3000}#pv[hidden]{display:none}
+.pvbar{position:sticky;top:0;z-index:1;background:#2f5d34;padding:8px 12px;display:flex;gap:8px;align-items:center}.pvbar .btn.ghost{color:#fff;border-color:#fff}.pvbar select{width:auto}.pvbar span{color:#fff;font-size:12px}
+#pv-page{background:#fff;color:#000;max-width:800px;margin:12px auto;padding:22px 26px;font:12px/1.4 "Times New Roman",Georgia,serif;box-shadow:0 1px 8px #0004}
+#pv-page h1{font-size:15px;text-align:center;margin:12px 0 2px}#pv-page .lh{text-align:center;line-height:1.3}
+.pt{width:100%;border-collapse:collapse}.pt td,.pt th{border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:left}.pt th{width:28%;font-weight:600;background:#f3f3f3}.pt .sec{background:#d9ead3;font-weight:700}.pt.list th{width:auto;background:#d9ead3}
+.sec2{font-weight:700;margin:12px 0 4px}.phs{display:flex;gap:8px}.phs figure{margin:0;width:33%;page-break-inside:avoid}.phs img{width:100%;height:150px;object-fit:cover;border:1px solid #000}.phs figcaption{font-size:10px}
+.cert{margin:14px 0 0}.sg{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:6px;page-break-inside:avoid}.sg .sl{border-bottom:1px solid #000;margin-top:48px;text-align:center;font-weight:700;min-height:16px}.sg div div+*{font-size:11px}
+.ft{margin-top:16px;font-size:10px;color:#444;border-top:1px solid #999;padding-top:4px}
+@page{size:A4;margin:14mm}
+@media print{body{display:block!important;height:auto!important}body>*:not(#pv){display:none!important}#pv{position:static;background:#fff;overflow:visible}.pvbar{display:none!important}#pv-page{box-shadow:none;margin:0;max-width:none;padding:0}}
 .lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
 @media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
@@ -101,7 +111,7 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
   <section class="pane" id="list">
     <div class="stats"><div><b id="s-all">0</b>Total</div><div><b id="s-high">0</b>High+</div><div><b id="s-ha">0</b>Ha</div><div><b id="s-30">0</b>30 days</div></div>
     <div class="row"><select id="f-crop" aria-label="Filter crop"></select><select id="f-sev" aria-label="Filter severity"><option value="">All severity</option><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
-    <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button></p>
+    <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button> <button class="btn ghost" id="psum" type="button">Print summary</button></p>
     <p class="hint" id="sync"></p><p><button class="btn ghost" id="syncb" type="button">Sync now</button></p><div id="items"></div>
   </section>
 
@@ -158,6 +168,8 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
     <p><button class="btn" type="submit">Register and sign in</button></p>
   </form>
 </div></div>
+<style id="pv-ps"></style>
+<div id="pv" hidden><div class="pvbar"><button class="btn" id="pv-print" type="button">Print</button><span>Paper:</span><select id="pv-size" aria-label="Paper size"><option value="A4">A4</option><option value="Letter">Letter</option><option value="Long">Long (8.5 x 13 in)</option></select><button class="btn ghost" id="pv-close" type="button">Close</button></div><div id="pv-page"></div></div>
 <script>
 // Paste the Apps Script Web app URL here (see Code.gs). While it is unchanged, the app runs in local demo mode.
 const API_URL="https://script.google.com/macros/s/AKfycbzXWRRZOYmhf63oYIsXL2w54abeG83pe9PjZySp2mBsurLzQAdlGg4FNrn3t5HN-9j_/exec";
@@ -283,8 +295,8 @@ function render(){renderDash();incidents.clearLayers();photoGroup.clearLayers();
  const cut=Date.now()-30*864e5;
  $("s-all").textContent=list.length;$("s-high").textContent=list.filter(r=>r.sev=="High"||r.sev=="Severe").length;
  $("s-ha").textContent=list.reduce((a,r)=>a+r.area,0).toFixed(1);$("s-30").textContent=list.filter(r=>new Date(r.date)>=cut).length;
- $("items").innerHTML=list.length?list.map(r=>`<div class="item" data-id="${r.id}"><span class="dot" style="background:${COL[r.sev]}"></span><b>${esc(r.pest)}</b> – ${esc(r.crop)}<br><small>${esc(r.farmer)} · ${esc(r.muni)}, ${esc(r.prov)} · ${r.sev} · ${esc(r.date)}</small></div>`).join(""):'<p class="hint">No incidents match. Reports you save appear here.</p>'}
-$("items").onclick=e=>{const it=e.target.closest(".item");if(!it)return;const r=reports.find(x=>x.id==it.dataset.id);map.setView([r.lat,r.lng],15)};
+ $("items").innerHTML=list.length?list.map(r=>`<div class="item" data-id="${r.id}"><button class="btn ghost" data-p="${r.id}" type="button" style="float:right;padding:2px 8px;font-size:12px">Print</button><span class="dot" style="background:${COL[r.sev]}"></span><b>${esc(r.pest)}</b> – ${esc(r.crop)}<br><small>${esc(r.farmer)} · ${esc(r.muni)}, ${esc(r.prov)} · ${r.sev} · ${esc(r.date)}</small></div>`).join(""):'<p class="hint">No incidents match. Reports you save appear here.</p>'}
+$("items").onclick=e=>{if(e.target.dataset.p){printIncident(e.target.dataset.p);return}const it=e.target.closest(".item");if(!it)return;const r=reports.find(x=>x.id==it.dataset.id);map.setView([r.lat,r.lng],15)};
 $("f-crop").onchange=$("f-sev").onchange=render;
 const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()};
 $("csv").onclick=()=>{const h=["id","date","farmer","rsbsa","crop","type","pest","sev","area","prov","muni","lat","lng","tech","notes"];
@@ -404,6 +416,41 @@ function renderDash(){
  bars("d-pest",tally(r=>r.pest).slice(0,10));bars("d-muni",tally(r=>r.muni+", "+r.prov).slice(0,10));bars("d-crops",tally(r=>r.crop));
  heat.setLatLngs(set.map(r=>[r.lat,r.lng,SW[r.sev]||.5]));setMode($("d-map").value)}
 ["d-from","d-to","d-crop","d-prov","d-map"].forEach(i=>$(i).onchange=render);
+
+/* printable reports */
+const E=esc,PAPER={A4:"A4",Letter:"letter",Long:"8.5in 13in"};
+const paper=()=>{$("pv-ps").textContent=`@page{size:${PAPER[$("pv-size").value]};margin:14mm}`};$("pv-size").onchange=paper;paper();
+const showPrint=h=>{$("pv-page").innerHTML=h;$("pv").hidden=false;$("pv").scrollTop=0};
+$("pv-close").onclick=()=>{$("pv").hidden=true};$("pv-print").onclick=()=>window.print();
+const hd=t=>`<div class="lh"><div style="font-size:11px">Republic of the Philippines</div><div style="font-weight:700;font-size:14px">DEPARTMENT OF AGRICULTURE</div><div style="font-weight:700">REGIONAL FIELD OFFICE I</div><div style="font-size:11px">San Fernando City, La Union</div></div><h1>${t}</h1>`;
+async function userFor(r){if(cu&&r.uid===cu.id)return cu;let u=users.find(x=>String(x.id)===String(r.uid));
+ if(!u&&ON&&(cu||admin)){try{users=(await api("users")).users;u=users.find(x=>String(x.id)===String(r.uid))}catch(e){}}return u||null}
+function sigs(name,pos){return `<div class="sg"><div><b>Prepared by:</b><div class="sl">${name?E(name.toUpperCase()):"&nbsp;"}</div><div>Signature over printed name<br>Position: ${pos?E(pos):"______________________"}<br>Date signed: ________________</div></div>
+ <div><b>Noted / verified by:</b><div class="sl">&nbsp;</div><div>Signature over printed name (Supervisor)<br>Position: ______________________<br>Date signed: ________________</div></div></div>`}
+function sketch(r){const P=r.polys||[];if(!P.length)return"";const pts=P.flat(),la=pts.map(p=>p[0]),ln=pts.map(p=>p[1]),a=Math.min(...la),b=Math.max(...la),c=Math.min(...ln),d=Math.max(...ln),k=Math.cos((a+b)/2*Math.PI/180);
+ const w=(d-c)*k||1e-5,h=b-a||1e-5,sc=Math.min(300/w,170/h),X=g=>10+(g-c)*k*sc,Y=t=>10+(b-t)*sc;
+ return `<p class="sec2">F. Sketch of affected area (from map delineation, not to scale)</p><svg width="${(w*sc+20).toFixed(0)}" height="${(h*sc+20).toFixed(0)}" style="border:1px solid #000">`+
+  P.map(p=>`<polygon points="${p.map(q=>X(q[1]).toFixed(1)+","+Y(q[0]).toFixed(1)).join(" ")}" fill="#f4b6b0" stroke="#c0392b" stroke-width="1.5"/>`).join("")+`<text x="${(w*sc+4).toFixed(0)}" y="16" font-size="11">N&#8593;</text></svg>`}
+function incidentHTML(r,u){const no=`PD-${String(r.date).slice(0,4)}-${String(r.id).slice(-6)}`,P=r.photos||[],row=(k,v)=>`<tr><th>${k}</th><td>${v}</td></tr>`,src={photo:"GPS in photo",device:"GPS from device",map:"map pin"};
+ return hd("CROP PEST AND DISEASE INCIDENT REPORT")+`<p style="text-align:right;margin:4px 0">Report No.: <b>${no}</b></p><table class="pt">
+ <tr><td colspan="2" class="sec">A. Reporter</td></tr>${row("Name of technician",E(r.tech))}${row("Position / level",u?E(u.pos)+" · "+E(u.level):"")}${row("Date observed",E(r.date))}${row("Date encoded",new Date(+r.id).toLocaleDateString("en-PH"))}
+ <tr><td colspan="2" class="sec">B. Location</td></tr>${row("Municipality / province",E(r.muni)+", "+E(r.prov))}${row("GPS coordinates",r.lat.toFixed(5)+", "+r.lng.toFixed(5))}
+ <tr><td colspan="2" class="sec">C. Farmer</td></tr>${row("Name of farmer",E(r.farmer))}${row("RSBSA",r.rsbsa?"&#9745; Registered &nbsp;&nbsp; &#9744; Not registered":"&#9744; Registered &nbsp;&nbsp; &#9745; Not registered")}
+ <tr><td colspan="2" class="sec">D. Incident</td></tr>${row("Crop",E(r.crop))}${row("Pest / disease",E(r.pest)+" ("+E(r.type)+")")}${row("Severity",E(r.sev))}
+ ${row("Area affected",(+r.area).toFixed(2)+" ha"+((r.polys||[]).length?` (delineated on map: ${r.polys.length} area${r.polys.length>1?"s":""})`:" (estimated by technician)"))}${row("Notes / action taken",E(r.notes||"None").replace(/\n/g,"<br>"))}</table>
+ <p class="sec2">E. Photographic evidence (geotagged)</p><div class="phs">${P.map((p,i)=>`<figure><img src="${p.d||p.url}" alt="Photo ${i+1}"><figcaption>Photo ${i+1}: ${(+p.lat).toFixed(5)}, ${(+p.lng).toFixed(5)} (${src[p.src]||E(p.src||"")})</figcaption></figure>`).join("")||"<i>No photos.</i>"}</div>
+ ${sketch(r)}<p class="cert">I certify that the information in this report is true and correct, based on my field observation.</p>${sigs(r.tech,u&&u.pos)}
+ <div class="ft">Report No. ${no} · Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`}
+async function printIncident(id){const r=reports.find(x=>String(x.id)===String(id));if(!r)return;showPrint(incidentHTML(r,await userFor(r)))}
+function summaryHTML(list,u){list=list.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));const ds=list.map(r=>String(r.date));
+ return hd("CROP PEST AND DISEASE MONITORING SUMMARY REPORT")+`<p style="margin:6px 0">Period covered: <b>${ds.length?E(ds[0])+" to "+E(ds[ds.length-1]):"-"}</b>${u?` &nbsp;·&nbsp; Technician: <b>${E(fullName(u))}</b>, ${E(u.pos)} (${E(u.level)})`:""}</p>
+ <table class="pt list"><tr><th>No.</th><th>Date</th><th>Municipality, province</th><th>Farmer</th><th>Crop</th><th>Pest / disease</th><th>Severity</th><th>Area (ha)</th></tr>
+ ${list.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.date)}</td><td>${E(r.muni)}, ${E(r.prov)}</td><td>${E(r.farmer)}</td><td>${E(r.crop)}</td><td>${E(r.pest)}</td><td>${E(r.sev)}</td><td style="text-align:right">${(+r.area).toFixed(2)}</td></tr>`).join("")||'<tr><td colspan="8">No incidents.</td></tr>'}
+ <tr><td colspan="7" style="text-align:right"><b>Total area affected</b></td><td style="text-align:right"><b>${list.reduce((a,r)=>a+(+r.area||0),0).toFixed(2)}</b></td></tr></table>
+ <p style="margin:8px 0"><b>Total incidents:</b> ${list.length} &nbsp;·&nbsp; ${["Low","Moderate","High","Severe"].map(k=>k+": "+list.filter(r=>r.sev===k).length).join(" · ")}</p>
+ <p class="cert">I certify that the information in this report is true and correct, based on my field observations.</p>${sigs(u&&fullName(u),u&&u.pos)}
+ <div class="ft">Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`}
+$("psum").onclick=()=>showPrint(summaryHTML(filtered(),admin?null:cu));
 
 /* Google Sheets / Drive sync */
 let adminPin=null,busy=false,pushing=false,lastErr="";
