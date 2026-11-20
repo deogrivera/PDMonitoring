@@ -1,563 +1,236 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DA RFO I – Crop Pest & Disease Surveillance</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
-<style>
-:root{--bg:#f3f5ef;--panel:#fff;--ink:#1d2a1f;--mute:#5d6b5f;--line:#d9dfd2;--brand:#2f5d34;--brand2:#e0a526;
---low:#e0a526;--mod:#e8782a;--high:#c0392b;--sev:#7b1d1d}
-@media(prefers-color-scheme:dark){:root{--bg:#141a15;--panel:#1d261e;--ink:#e8efe4;--mute:#9fb0a0;--line:#31402f;--brand:#6fb577}}
-*{box-sizing:border-box}
-body{margin:0;font:14px/1.45 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column}
-header{background:#2f5d34;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-header h1{font:700 16px/1.2 Georgia,serif;margin:0;flex:1}
-header small{display:block;font:400 12px "Segoe UI",sans-serif;opacity:.8}
-.role{display:flex;gap:4px;background:rgba(255,255,255,.15);border-radius:6px;padding:3px}
-.role button{border:0;background:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font:inherit}
-.role button.on{background:#fff;color:#2f5d34;font-weight:600}
-main{flex:1;display:grid;grid-template-columns:360px 1fr;min-height:0}
-aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-.tabs{display:flex;border-bottom:1px solid var(--line)}
-.tabs button{flex:1;padding:10px 4px;border:0;background:none;color:var(--mute);cursor:pointer;font:inherit;border-bottom:3px solid transparent}
-.tabs button.on{color:var(--brand);border-color:var(--brand);font-weight:600}
-.pane{display:none;padding:14px;overflow:auto;flex:1}.pane.on{display:block}
-label{display:block;font-weight:600;font-size:13px;margin:10px 0 3px}
-input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:5px;font:inherit;background:var(--bg);color:var(--ink)}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.btn{padding:8px 12px;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:5px;cursor:pointer;font:inherit;font-weight:600}
-.btn.ghost{background:none;color:var(--brand)}.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.tabs button:focus-visible{outline:2px solid var(--brand2);outline-offset:1px}
-.hint{color:var(--mute);font-size:12px;margin:4px 0}
-.coord{padding:8px;background:var(--bg);border:1px dashed var(--line);border-radius:5px;margin-top:10px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-.stats div{background:var(--bg);border-radius:5px;padding:6px;text-align:center}.stats b{display:block;font-size:18px}
-.item{border-bottom:1px solid var(--line);padding:8px 0;cursor:pointer}.item:hover{background:var(--bg)}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
-.item small{color:var(--mute)}
-#map{height:100%;min-height:300px}
-.layer{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.layer span{flex:1;word-break:break-word}
-.inl{display:flex;gap:6px}.inl select{flex:1}.inl .btn{padding:5px 8px;white-space:nowrap;font-size:12px}.mini{background:var(--bg);border:1px dashed var(--line);border-radius:6px;padding:8px;margin-top:6px}.mini label{margin:6px 0 3px}.chk{display:flex;gap:6px;align-items:center;font-weight:600;margin:8px 0}.chk input{width:auto}
-.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.th{width:98px;font-size:11px;color:var(--mute)}.th img{width:98px;height:74px;object-fit:cover;border-radius:4px;display:block}.th button{border:0;background:none;color:var(--high);cursor:pointer;padding:0}
-.cam{width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid #1f77b4;text-align:center;line-height:20px;font-size:12px;box-shadow:0 1px 3px #0006}
-.auth{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:12px}.auth[hidden]{display:none}
-.card{background:var(--panel);width:min(430px,100%);max-height:92vh;overflow:auto;border-radius:8px;padding:16px 18px}.card h2{margin:0 0 8px;font:700 17px Georgia,serif}
-.atabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px}.atabs button{flex:1;padding:8px;border:0;background:none;color:var(--mute);cursor:pointer;font:inherit;border-bottom:3px solid transparent}.atabs button.on{color:var(--brand);border-color:var(--brand);font-weight:600}
-.pane h3{font:700 13px "Segoe UI",sans-serif;margin:16px 0 4px}.bars .b{display:grid;grid-template-columns:130px 1fr 30px;gap:6px;align-items:center;font-size:12px;margin:3px 0}.bars .b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bars .b i{display:block;height:12px;border-radius:3px;min-width:2px}.bars .b b{text-align:right}
-.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.alert{border:1px solid var(--line);border-left:5px solid #c0392b;border-radius:5px;padding:8px;margin:6px 0;background:var(--bg)}.alert.crit{border-left-color:#7b1d1d}.alert b{color:#c0392b}.alert.crit b{color:#7b1d1d}
-#pv{position:fixed;inset:0;background:#e5e7e2;overflow:auto;z-index:3000}#pv[hidden]{display:none}
-.pvbar{position:sticky;top:0;z-index:1;background:#2f5d34;padding:8px 12px;display:flex;gap:8px;align-items:center}.pvbar .btn.ghost{color:#fff;border-color:#fff}.pvbar select{width:auto}.pvbar span{color:#fff;font-size:12px}
-#pv-page{background:#fff;color:#000;max-width:800px;margin:12px auto;padding:22px 26px;font:12px/1.4 "Times New Roman",Georgia,serif;box-shadow:0 1px 8px #0004}
-#pv-page h1{font-size:15px;text-align:center;margin:12px 0 2px}#pv-page .lh{text-align:center;line-height:1.3}
-.pt{width:100%;border-collapse:collapse}.pt td,.pt th{border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:left}.pt th{width:28%;font-weight:600;background:#f3f3f3}.pt .sec{background:#d9ead3;font-weight:700}.pt.list th{width:auto;background:#d9ead3}
-.sec2{font-weight:700;margin:12px 0 4px}.phs{display:flex;gap:8px}.phs figure{margin:0;width:33%;page-break-inside:avoid}.phs img{width:100%;height:150px;object-fit:cover;border:1px solid #000}.phs figcaption{font-size:10px}
-.cert{margin:14px 0 0}.sg{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:6px;page-break-inside:avoid}.sg .sl{border-bottom:1px solid #000;margin-top:48px;text-align:center;font-weight:700;min-height:16px}.sg div div+*{font-size:11px}
-.ft{margin-top:16px;font-size:10px;color:#444;border-top:1px solid #999;padding-top:4px}
-#ld{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:1200;pointer-events:none;width:min(300px,86%);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;box-shadow:0 2px 12px #0004;padding:10px 14px;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center}
-#ld[hidden]{display:none}#ld small{grid-column:2;color:var(--mute);font-size:11px}.ldbar{grid-column:1/3;height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:6px}
-.ldbar i{display:block;height:100%;width:40%;background:var(--brand);animation:slide 1.1s ease-in-out infinite}
-.ring{width:24px;height:24px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;grid-row:1/3}
-.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px}
-.sk{height:46px;border-radius:5px;margin:8px 0;background:linear-gradient(90deg,var(--bg) 25%,var(--line) 37%,var(--bg) 63%);background-size:400% 100%;animation:shim 1.3s ease infinite}
-@keyframes spin{to{transform:rotate(360deg)}}@keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}@keyframes shim{0%{background-position:100% 50%}100%{background-position:0 50%}}@keyframes pulse{50%{opacity:.4}}
-@keyframes drop{from{opacity:0;transform:translateY(-16px) rotate(-45deg)}to{opacity:1;transform:rotate(-45deg)}}
-body.loading #d-kpi,body.loading .bars{animation:pulse 1.2s ease infinite}body.fresh .pin{animation:drop .45s ease both}
-@media (prefers-reduced-motion:reduce){.sk,.ldbar i,body.fresh .pin,body.loading #d-kpi,body.loading .bars{animation:none}}
-.grp{border:1px solid var(--line);border-radius:8px;margin:0 0 12px;overflow:hidden}
-.grp>h4{margin:0;padding:8px 12px;background:var(--bg);font:700 13px "Segoe UI",sans-serif;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
-.grp>h4 i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;text-align:center;line-height:20px;font-size:12px}
-.grp .gb{padding:2px 12px 12px}.req::after{content:" *";color:var(--high)}
-.savebar{position:sticky;bottom:-14px;background:var(--panel);padding:10px 0 2px;border-top:1px solid var(--line)}
-.num{width:22px;height:22px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 11px/18px sans-serif;text-align:center;box-shadow:0 0 3px #000}
-#pv-map{width:660px;height:470px;margin:0 auto;border:1px solid #000;background:#eee}.pgb{border-top:2px dashed #999;margin:26px 0 12px}
-.pt.list{font-size:10px;table-layout:fixed;word-wrap:break-word;overflow-wrap:anywhere}.pt.list td,.pt.list th{padding:3px 4px}.cn{font-size:10px;color:#222;margin-top:4px}
-@page{size:A4;margin:14mm}
-@media print{#pv-page{-webkit-print-color-adjust:exact;print-color-adjust:exact}.pgb{border:0;margin:0;break-before:page;page-break-before:always}body{display:block!important;height:auto!important}body>*:not(#pv){display:none!important}#pv{position:static;background:#fff;overflow:visible}.pvbar{display:none!important}#pv-page{box-shadow:none;margin:0;max-width:none;padding:0}}
-.lock{padding:14px;background:var(--bg);border-radius:6px;color:var(--mute)}
-.pin{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0007}
-@media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0}#map{order:1}}
-</style>
-</head>
-<body>
-<header>
-  <h1>Crop Pest &amp; Disease Surveillance<small>Department of Agriculture – Regional Field Office I</small></h1>
-  <span id="who" style="font-size:13px"></span><button class="btn ghost" id="signout" type="button" style="color:#fff;border-color:#fff;padding:3px 10px" hidden>Sign out</button>
-  <div class="role" role="group" aria-label="Role"><button id="r-tech" class="on">Field technician</button><button id="r-admin">Administrator</button></div>
-</header>
-<main>
-<aside>
-  <div class="tabs"><button class="on" data-t="report">Report</button><button data-t="list">Incidents</button><button data-t="dash" id="dash-tab">Dashboard</button><button data-t="admin">Map layers</button></div>
+/**
+ * DA RFO I – Crop Pest & Disease Surveillance: Google Apps Script backend
+ * Data  -> Google Sheet "PDMonitoring"
+ * Files -> Google Drive folder "PDMonitoring"
+ *
+ * ONE-TIME SETUP
+ * 1. Open the Sheet > Extensions > Apps Script. Replace everything with this file.
+ * 2. Run setup() once and approve the permissions.
+ * 3. Run setAdminPin() after changing NEW_ADMIN_PIN below (4 or more digits).
+ * 4. Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone.
+ * 5. Copy the Web app URL into API_URL at the top of the HTML file.
+ * After ANY change to this file: Deploy > Manage deployments > Edit > New version.
+ */
+const SHEET_ID = '1DO0KNFeEmamELKtB-9wKflvy0w4pCKNfxGphfNCF6Ik';
+const FOLDER_ID = '1ojsBMDem-1DA2UAlMhNBQfx3n2ebZ5m9';
+const NEW_ADMIN_PIN = 'CHANGE-ME';
 
-  <section class="pane on" id="report">
-    <p class="hint" style="margin-top:0">Fill in the four sections below, then press <b>Save incident</b>. Fields marked <span style="color:var(--high)">*</span> are required.</p>
-    <form id="form" autocomplete="off">
+const TABS = {
+  Users: ['id', 'first', 'mi', 'last', 'position', 'level', 'region', 'province', 'municipality', 'pinHash', 'created'],
+  Farmers: ['name', 'rsbsa', 'idPhotoUrl', 'addedBy', 'created'],
+  Reports: ['id', 'created', 'userId', 'reportedBy', 'farmer', 'rsbsa', 'crop', 'type', 'pest', 'severity', 'areaHa',
+    'province', 'municipality', 'dateObserved', 'lat', 'lng', 'notes', 'polygons', 'photo1', 'photo2', 'photo3', 'photoMeta'],
+  Catalog: ['crop', 'type', 'name'],
+  Layers: ['id', 'name', 'fileId', 'created']
+};
+const NUMERIC = ['areaHa', 'lat', 'lng'];
 
-      <div class="grp"><h4><i>1</i>Location</h4><div class="gb">
-        <label class="req">GPS location</label>
-        <button class="btn ghost" id="gps" type="button">Use my GPS location</button>
-        <div class="coord" id="coord">No location picked yet.</div>
-        <div class="hint">Or tap the incident on the map. A geotagged photo in section 3 also sets the location.</div>
-        <div class="row"><div><label for="prov" class="req">Province</label><select id="prov"></select></div>
-        <div><label for="muni" class="req">Municipality / city</label><select id="muni" required></select></div></div>
-      </div></div>
+function setup() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  Object.keys(TABS).forEach(n => {
+    const sh = ss.getSheetByName(n) || ss.insertSheet(n), h = TABS[n];
+    if (sh.getLastRow() === 0) {
+      sh.appendRow(h);
+      sh.setFrozenRows(1);
+      sh.getRange(1, 1, 1, h.length).setFontWeight('bold').setBackground('#d9ead3');
+    }
+    h.forEach((c, i) => sh.getRange(2, i + 1, sh.getMaxRows() - 1, 1).setNumberFormat(NUMERIC.includes(c) ? '0.######' : '@'));
+  });
+  const s1 = ss.getSheetByName('Sheet1');
+  if (s1 && s1.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(s1);
+  sub('Incident photos'); sub('KML layers'); rsbsaFolder();
+  Logger.log('Setup done. Now run setAdminPin().');
+}
 
-      <div class="grp"><h4><i>2</i>Farmer Profile</h4><div class="gb">
-        <label for="farmer" class="req">Name of farmer</label>
-        <div class="inl"><select id="farmer"></select><button class="btn ghost" id="addf" type="button">+ Farmer</button></div>
-        <div id="fstat" class="hint"></div>
-        <div id="fpanel" class="mini" hidden>
-          <label for="fname">Farmer name (Last, First M.)</label><input id="fname">
-          <div class="chk"><input type="checkbox" id="frsbsa"><label for="frsbsa" style="margin:0">Registered in RSBSA</label></div>
-          <div id="fidwrap" hidden><label for="fid">Photo of RSBSA ID</label><input id="fid" type="file" accept="image/*" capture="environment"><img id="fidprev" alt="" style="max-width:120px;margin-top:4px;display:none"></div>
-          <p><button class="btn" id="savef" type="button">Save farmer</button> <button class="btn ghost" id="cancelf" type="button">Cancel</button></p>
-        </div>
-      </div></div>
+function setAdminPin() {
+  if (NEW_ADMIN_PIN === 'CHANGE-ME') throw new Error('Edit NEW_ADMIN_PIN first.');
+  PropertiesService.getScriptProperties().setProperty('ADMIN', hash(NEW_ADMIN_PIN));
+}
 
-      <div class="grp"><h4><i>3</i>Incident Profile</h4><div class="gb">
-        <label for="date" class="req">Date observed</label><input id="date" type="date" required>
-        <label for="crop" class="req">Crop</label>
-        <div class="inl"><select id="crop"></select><button class="btn ghost" id="addc" type="button">+ Crop</button></div>
-        <label for="pest" class="req">Pest / disease</label>
-        <select id="pest"></select>
-        <div class="inl" style="margin-top:6px"><button class="btn ghost" id="addp" type="button">+ Pest</button><button class="btn ghost" id="addd" type="button">+ Disease</button></div>
-        <label>Affected area (draw on the map)</label>
-        <div class="inl"><button class="btn ghost" id="drawb" type="button">Draw area</button><button class="btn ghost" id="undob" type="button">Undo</button><button class="btn ghost" id="clearb" type="button">Clear</button></div>
-        <div class="hint" id="shapes">No area drawn. Type the hectares below only if you are not drawing.</div>
-        <div class="row"><div><label for="sev" class="req">Severity</label><select id="sev"><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
-        <div><label for="area" class="req">Area affected (ha)</label><input id="area" type="number" min="0" step="0.01" value="0.5"></div></div>
-        <label class="req">Geotagged photos (1 to 3)</label>
-        <div class="inl"><button class="btn ghost" id="camb" type="button">Take photo</button><button class="btn ghost" id="galb" type="button">Choose photos</button></div>
-        <input id="cam" type="file" accept="image/*" capture="environment" hidden><input id="gal" type="file" accept="image/*" multiple hidden>
-        <div class="hint">Photos taken in the app use this device's GPS. Chosen photos use the GPS saved in the file.</div>
-        <div class="thumbs" id="thumbs"></div>
-        <label for="tech" class="req">Reported by</label><input id="tech" required>
-      </div></div>
+/* ---------- helpers ---------- */
+const hash = s => Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, SHEET_ID + ':' + s));
+const T = n => SpreadsheetApp.openById(SHEET_ID).getSheetByName(n);
+function rows(n) {
+  const v = T(n).getDataRange().getValues(), h = v.shift();
+  return v.map(r => Object.fromEntries(h.map((k, i) => [k, r[i]])));
+}
+function add(n, o) {
+  const s = T(n), h = s.getRange(1, 1, 1, s.getLastColumn()).getValues()[0];
+  s.appendRow(h.map(k => o[k] === undefined ? '' : o[k]));
+}
+function sub(name) {
+  const p = DriveApp.getFolderById(FOLDER_ID), it = p.getFoldersByName(name);
+  return it.hasNext() ? it.next() : p.createFolder(name);
+}
+// RSBSA ID photos go to a PRIVATE folder in My Drive, because the PDMonitoring folder is shared by link.
+function rsbsaFolder() {
+  const p = PropertiesService.getScriptProperties();
+  let id = p.getProperty('RSBSA_FOLDER');
+  if (!id) { id = DriveApp.createFolder('PDM - RSBSA IDs (private)').getId(); p.setProperty('RSBSA_FOLDER', id); }
+  return DriveApp.getFolderById(id);
+}
+function saveImg(dataUrl, folder, name, pub) {
+  const f = folder.createFile(Utilities.newBlob(Utilities.base64Decode(dataUrl.split(',')[1]), 'image/jpeg', name));
+  if (pub) { try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) { /* sharing blocked: file is still saved */ } }
+  return f;
+}
+function throttle(key) {
+  const c = CacheService.getScriptCache(), n = +c.get(key) || 0;
+  if (n >= 5) throw new Error('Too many wrong PINs. Try again in 10 minutes.');
+  return { fail: () => c.put(key, String(n + 1), 600), ok: () => c.remove(key) };
+}
+function user(q) {
+  const t = throttle('f' + q.uid), u = rows('Users').find(r => String(r.id) === String(q.uid));
+  if (!u || u.pinHash !== hash(String(q.pin))) { t.fail(); throw new Error('Wrong PIN'); }
+  t.ok(); return u;
+}
+function admin(q) {
+  const t = throttle('fadmin');
+  if (!q.admin || PropertiesService.getScriptProperties().getProperty('ADMIN') !== hash(String(q.admin))) { t.fail(); throw new Error('Wrong administrator PIN'); }
+  t.ok();
+}
+function actor(q) { if (q.admin) { admin(q); return { admin: true }; } return { u: user(q) }; }
+const pub = u => ({ id: String(u.id), first: u.first, mi: u.mi, last: u.last, pos: u.position, level: u.level, region: 'Region I', prov: u.province, muni: u.municipality });
+function rep(r) {
+  const meta = JSON.parse(r.photoMeta || '[]');
+  return {
+    id: Number(r.id), uid: String(r.userId), tech: r.reportedBy, farmer: r.farmer, rsbsa: r.rsbsa === 'Yes', crop: r.crop, type: r.type,
+    pest: r.pest, sev: r.severity, area: Number(r.areaHa) || 0, prov: r.province, muni: r.municipality, date: r.dateObserved,
+    lat: Number(r.lat), lng: Number(r.lng), notes: r.notes, polys: JSON.parse(r.polygons || '[]'), synced: true,
+    photos: ['photo1', 'photo2', 'photo3'].filter(k => r[k]).map((k, i) =>
+      Object.assign({ url: 'https://drive.google.com/thumbnail?id=' + r[k] + '&sz=w800' }, meta[i] || {}))
+  };
+}
 
-      <div class="grp"><h4><i>4</i>Notes / Action Taken</h4><div class="gb">
-        <label for="notes">Notes, observations and action taken</label>
-        <textarea id="notes" rows="4" placeholder="Example: Advised the farmer to spray; will re-visit in 7 days."></textarea>
-      </div></div>
+/* ---------- actions ---------- */
+const R = {
+  users: () => ({ users: rows('Users').map(pub) }),
 
-      <div class="savebar"><button class="btn" type="submit" style="width:100%">Save incident</button></div>
-    </form>
-  </section>
+  register: q => {
+    const x = q.user;
+    ['first', 'last', 'pos', 'level'].forEach(k => { if (!x[k]) throw new Error('Missing ' + k); });
+    if (!/^\d{4}$/.test(String(x.pin))) throw new Error('The PIN must be 4 digits');
+    const nm = (x.first + x.last).toLowerCase();
+    if (rows('Users').some(u => (u.first + u.last).toLowerCase() === nm)) throw new Error('This technician is already registered. Use Sign in.');
+    const id = String(Date.now());
+    add('Users', { id, first: x.first, mi: x.mi || '', last: x.last, position: x.pos, level: x.level, region: 'Region I',
+      province: x.prov || '', municipality: x.muni || '', pinHash: hash(String(x.pin)), created: new Date().toISOString() });
+    return { user: { id, first: x.first, mi: x.mi || '', last: x.last, pos: x.pos, level: x.level, region: 'Region I', prov: x.prov || '', muni: x.muni || '' } };
+  },
 
+  login: q => ({ user: pub(user(q)) }),
+  login_admin: q => { admin(q); return {}; },
 
-  <section class="pane" id="list">
-    <div class="stats"><div><b id="s-all">0</b>Total</div><div><b id="s-high">0</b>High+</div><div><b id="s-ha">0</b>Ha</div><div><b id="s-30">0</b>30 days</div></div>
-    <div class="mini" style="margin:0 0 10px"><b>Generate report</b>
-      <div class="row"><div><label for="r-from">From</label><input type="date" id="r-from"></div><div><label for="r-to">To</label><input type="date" id="r-to"></div></div>
-      <label for="r-preset">Quick period</label><select id="r-preset"><option value="custom">Custom dates</option><option value="month">This month</option><option value="last">Last month</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="year">This year</option><option value="all">All dates</option></select>
-      <p style="margin:8px 0 0"><button class="btn" id="psum" type="button">Generate report</button></p>
-      <div class="hint">Lists every incident observed in the period, with coordinates and a location map page.</div></div>
-    <div class="row"><select id="f-crop" aria-label="Filter crop"></select><select id="f-sev" aria-label="Filter severity"><option value="">All severity</option><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
-    <p><button class="btn ghost" id="csv" type="button">Export CSV</button> <button class="btn ghost" id="gj" type="button">Export GeoJSON</button></p>
-    <p class="hint" id="sync"></p><p><button class="btn ghost" id="syncb" type="button">Sync now</button></p><div id="items"></div>
-  </section>
+  pull: q => {
+    const a = actor(q), catalog = {};
+    rows('Catalog').forEach(r => {
+      const c = catalog[r.crop] = catalog[r.crop] || { pest: [], disease: [] };
+      if (r.type === 'pest' || r.type === 'disease') c[r.type].push(r.name);
+    });
+    return {
+      reports: rows('Reports').filter(r => a.admin || String(r.userId) === String(a.u.id)).map(rep),
+      farmers: rows('Farmers').map(f => ({ name: f.name, rsbsa: f.rsbsa === 'Yes', idPhoto: f.idPhotoUrl || null, synced: true })),
+      catalog,
+      layers: rows('Layers').map(l => {
+        try { return { id: String(l.id), name: l.name, text: DriveApp.getFileById(l.fileId).getBlob().getDataAsString() }; }
+        catch (e) { return null; }
+      }).filter(Boolean)
+    };
+  },
 
-  <section class="pane" id="dash">
-    <div id="dash-lock" class="lock">Switch to <b>Administrator</b> (top right) to view the dashboard.</div>
-    <div id="dash-body" hidden>
-      <h3 style="margin-top:0">Alerts: clusters of High / Severe reports</h3>
-      <div class="row3"><div><label for="a-min">Min. reports</label><input type="number" id="a-min" min="2"></div><div><label for="a-km">Radius (km)</label><input type="number" id="a-km" min="0.5" step="0.5"></div><div><label for="a-days">Within (days)</label><input type="number" id="a-days" min="1"></div></div>
-      <div id="d-alerts"></div>
-      <p class="hint">An alert appears when that many High or Severe reports of the same pest are within the radius of each other and were observed within the time window. Dashed circles on the map mark each cluster.</p>
-      <h3>Filters and charts</h3>
-      <div class="row"><div><label for="d-from">From</label><input type="date" id="d-from"></div><div><label for="d-to">To</label><input type="date" id="d-to"></div></div>
-      <div class="row"><div><label for="d-crop">Crop</label><select id="d-crop"></select></div><div><label for="d-prov">Province</label><select id="d-prov"></select></div></div>
-      <label for="d-map">Map view</label><select id="d-map"><option value="pins">Incident pins</option><option value="heat">Severity heat map</option><option value="both">Pins and heat map</option></select>
-      <div class="stats" id="d-kpi" style="margin-top:12px"></div>
-      <h3>By severity</h3><div class="bars" id="d-sev"></div>
-      <h3>By pest / disease (top 10)</h3><div class="bars" id="d-pest"></div>
-      <h3>By municipality (top 10)</h3><div class="bars" id="d-muni"></div>
-      <h3>By crop</h3><div class="bars" id="d-crops"></div>
-      <p class="hint">Heat map: the redder the area, the more and the more severe the incidents. Filters above apply to every chart, the map pins and the heat map.</p>
-    </div>
-  </section>
+  farmer_add: q => {
+    const a = actor(q), f = q.farmer;
+    if (!f || !f.name) throw new Error('Missing farmer name');
+    const ex = rows('Farmers').find(r => String(r.name).toLowerCase() === f.name.toLowerCase());
+    if (ex) return { idPhoto: ex.idPhotoUrl || null };
+    let url = '';
+    if (f.rsbsa && f.idPhoto && f.idPhoto.indexOf('data:') === 0) url = saveImg(f.idPhoto, rsbsaFolder(), 'RSBSA_' + f.name + '.jpg', false).getUrl();
+    add('Farmers', { name: f.name, rsbsa: f.rsbsa ? 'Yes' : 'No', idPhotoUrl: url,
+      addedBy: a.admin ? 'admin' : a.u.last + ', ' + a.u.first, created: new Date().toISOString() });
+    return { idPhoto: url || null };
+  },
 
-  <section class="pane" id="admin">
-    <div id="admin-lock" class="lock">Switch to <b>Administrator</b> (top right) to upload KML layers.</div>
-    <div id="admin-body" hidden>
-      <p class="hint">Upload a .kml file (boundaries, irrigated areas, rice zones, etc.). It is added on top of the existing map and kept in this browser.</p>
-      <input type="file" id="kml" accept=".kml">
-      <div id="layers" style="margin-top:10px"></div>
-    </div>
-  </section>
-</aside>
-<div id="map" role="application" aria-label="Surveillance map"></div>
-</main>
+  report_add: q => {
+    const a = actor(q), r = q.report;
+    // Saving the same report twice (a retry after a weak signal) never creates a duplicate.
+    if (!rows('Reports').some(x => String(x.id) === String(r.id))) {
+      const ids = [], meta = [], folder = sub('Incident photos');
+      (r.photos || []).slice(0, 3).forEach((p, i) => {
+        if (!p.d) return;
+        const f = saveImg(p.d, folder, r.id + '_' + (i + 1) + '.jpg', true);
+        f.setDescription('lat,lng: ' + p.lat + ',' + p.lng + ' (' + p.src + ')');
+        ids.push(f.getId()); meta.push({ lat: p.lat, lng: p.lng, src: p.src });
+      });
+      add('Reports', { id: r.id, created: new Date().toISOString(), userId: a.admin ? (r.uid || 'admin') : a.u.id, reportedBy: r.tech,
+        farmer: r.farmer, rsbsa: r.rsbsa ? 'Yes' : 'No', crop: r.crop, type: r.type, pest: r.pest, severity: r.sev, areaHa: r.area,
+        province: r.prov, municipality: r.muni, dateObserved: r.date, lat: r.lat, lng: r.lng, notes: r.notes,
+        polygons: JSON.stringify(r.polys || []), photo1: ids[0] || '', photo2: ids[1] || '', photo3: ids[2] || '', photoMeta: JSON.stringify(meta) });
+    }
+    return { report: rep(rows('Reports').find(x => String(x.id) === String(r.id))) };
+  },
 
-<div class="auth" id="auth" hidden><div class="card">
-  <h2>Field technician access</h2>
-  <div class="atabs"><button class="on" data-a="in" type="button">Sign in</button><button data-a="reg" type="button">Register</button></div>
-  <div id="a-in">
-    <label for="u-sel">Technician</label><select id="u-sel"></select>
-    <label for="u-pin">4-digit PIN</label><input id="u-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
-    <p class="hint" id="u-empty"></p>
-    <p><button class="btn" id="u-go" type="button">Sign in</button> <button class="btn ghost" id="u-admin" type="button">I am an administrator</button></p>
-  </div>
-  <form id="a-reg" hidden autocomplete="off">
-    <div class="row"><div><label for="g-first">First name</label><input id="g-first" required></div><div><label for="g-mi">MI</label><input id="g-mi" maxlength="2"></div></div>
-    <label for="g-last">Last name</label><input id="g-last" required>
-    <label for="g-pos">Position</label><input id="g-pos" required>
-    <label for="g-level">Level</label><select id="g-level"><option>Municipal</option><option>Provincial</option><option>Regional</option></select>
-    <div id="g-provw"><label for="g-prov">Province</label><select id="g-prov"></select></div>
-    <div id="g-muniw"><label for="g-muni">Municipality / city</label><select id="g-muni"></select></div>
-    <div id="g-regw" hidden><label for="g-reg">Region</label><select id="g-reg"><option>Region I</option></select></div>
-    <label for="g-pin">Choose a 4-digit PIN</label><input id="g-pin" type="password" inputmode="numeric" maxlength="4" required>
-    <p><button class="btn" type="submit">Register and sign in</button></p>
-  </form>
-</div></div>
-<style id="pv-ps"></style>
-<div id="ld" hidden role="status" aria-live="polite"><div class="ring"></div><b id="ld-msg">Loading incident reports…</b><small id="ld-sub"></small><div class="ldbar"><i></i></div></div>
-<div id="pv" hidden><div class="pvbar"><button class="btn" id="pv-print" type="button">Print</button><span>Paper:</span><select id="pv-size" aria-label="Paper size"><option value="A4">A4</option><option value="Letter">Letter</option><option value="Long">Long (8.5 x 13 in)</option></select><span>Map:</span><select id="pv-base" aria-label="Map type"><option value="street">Street</option><option value="sat">Satellite</option></select><button class="btn ghost" id="pv-close" type="button">Close</button><span id="pv-status"></span></div><div id="pv-page"></div></div>
-<script>
-// Paste the Apps Script Web app URL here (see Code.gs). While it is unchanged, the app runs in local demo mode.
-const API_URL="https://script.google.com/macros/s/AKfycbzXWRRZOYmhf63oYIsXL2w54abeG83pe9PjZySp2mBsurLzQAdlGg4FNrn3t5HN-9j_/exec";
-const ON=!API_URL.includes("PASTE");
-const DEF={Rice:[["Brown planthopper","Stemborer","Rice black bug","Golden apple snail","Rice bug"],["Rice blast","Bacterial leaf blight","Tungro"]],
-Corn:[["Fall armyworm","Corn borer"],["Downy mildew","Leaf blight"]],Tomato:[["Fruit borer"],["Late blight","Bacterial wilt","Leaf curl"]],
-Mango:[["Mango hopper","Cecid fly"],["Anthracnose"]],Vegetables:[["Diamondback moth","Cutworm","Aphids"],["Fusarium wilt"]],Other:[[],[]]};
-const MUNI={"Ilocos Norte":"Adams,Bacarra,Badoc,Bangui,Banna,Batac City,Burgos,Carasi,Currimao,Dingras,Dumalneg,Laoag City,Marcos,Nueva Era,Pagudpud,Paoay,Pasuquin,Piddig,Pinili,San Nicolas,Sarrat,Solsona,Vintar",
-"Ilocos Sur":"Alilem,Banayoyo,Bantay,Burgos,Cabugao,Candon City,Caoayan,Cervantes,Galimuyod,Gregorio del Pilar,Lidlidda,Magsingal,Nagbukel,Narvacan,Quirino,Salcedo,San Emilio,San Esteban,San Ildefonso,San Juan,San Vicente,Santa,Santa Catalina,Santa Cruz,Santa Lucia,Santa Maria,Santiago,Santo Domingo,Sigay,Sinait,Sugpon,Suyo,Tagudin,Vigan City",
-"La Union":"Agoo,Aringay,Bacnotan,Bagulin,Balaoan,Bangar,Bauang,Burgos,Caba,Luna,Naguilian,Pugo,Rosario,San Fernando City,San Gabriel,San Juan,Santo Tomas,Santol,Sudipen,Tubao",
-"Pangasinan":"Agno,Aguilar,Alaminos City,Alcala,Anda,Asingan,Balungao,Bani,Basista,Bautista,Bayambang,Binalonan,Binmaley,Bolinao,Bugallon,Burgos,Calasiao,Dagupan City,Dasol,Infanta,Labrador,Laoac,Lingayen,Mabini,Malasiqui,Manaoag,Mangaldan,Mangatarem,Mapandan,Natividad,Pozorrubio,Rosales,San Carlos City,San Fabian,San Jacinto,San Manuel,San Nicolas,San Quintin,Santa Barbara,Santa Maria,Santo Tomas,Sison,Sual,Tayug,Umingan,Urbiztondo,Urdaneta City,Villasis"};
-const COL={Low:"#e0a526",Moderate:"#e8782a",High:"#c0392b",Severe:"#7b1d1d"};
-const $=id=>document.getElementById(id);
-const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
-const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){alert("Browser storage is full. Remove old reports or large KML layers.");return false}};
-const CAT=load("pd_cat",null)||Object.fromEntries(Object.entries(DEF).map(([c,v])=>[c,{pest:v[0],disease:v[1]}]));
-let reports=load("pd_reports",[]),farmers=load("pd_farmers",[]),layers=load("pd_kml",[]),admin=false,pick=null,pickMarker=null,photos=[],fidData=null;
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  // Returns photo bytes (base64) so the app can embed them in the Word export.
+  photos: q => {
+    const a = actor(q), allowed = {}, out = {};
+    rows('Reports').filter(r => a.admin || String(r.userId) === String(a.u.id))
+      .forEach(r => ['photo1', 'photo2', 'photo3'].forEach(k => { if (r[k]) allowed[String(r[k])] = 1; }));
+    (q.ids || []).slice(0, 8).forEach(id => {
+      if (!allowed[String(id)]) return;
+      try { const b = DriveApp.getFileById(id).getBlob(); out[id] = 'data:' + b.getContentType() + ';base64,' + Utilities.base64Encode(b.getBytes()); } catch (e) {}
+    });
+    return { photos: out };
+  },
 
-/* map */
-const map=L.map("map").setView([16.6,120.4],9);
-const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
-const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"});
-osm.addTo(map);
-const incidents=L.layerGroup().addTo(map),photoGroup=L.layerGroup().addTo(map),kmlGroup=L.layerGroup().addTo(map);
-L.control.layers({"Street map":osm,"Satellite":sat},{"Incidents":incidents,"Geotagged photos":photoGroup,"KML layers":kmlGroup}).addTo(map);
-const pinIcon=c=>L.divIcon({className:"",html:`<div class="pin" style="background:${c}"></div>`,iconSize:[26,26],iconAnchor:[6,26],popupAnchor:[7,-24]});
-const camIcon=L.divIcon({className:"",html:'<div class="cam">&#128247;</div>',iconSize:[24,24]});
-map.on("click",e=>{if(drawing){cur.push([e.latlng.lat,e.latlng.lng]);redrawShapes()}else setPick(e.latlng.lat,e.latlng.lng)});
-function setPick(lat,lng){pick={lat,lng};if(pickMarker)pickMarker.setLatLng([lat,lng]);else pickMarker=L.marker([lat,lng],{opacity:.7}).addTo(map);
- $("coord").textContent=`Incident location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`}
-$("gps").onclick=()=>devPos().then(p=>{setPick(p.lat,p.lng);map.setView([p.lat,p.lng],15)},()=>alert("GPS unavailable. Tap the map instead."));
-const devPos=()=>new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>ok({lat:p.coords.latitude,lng:p.coords.longitude}),no,{enableHighAccuracy:true,timeout:12000}):no());
+  catalog_add: q => {
+    actor(q);
+    if (!rows('Catalog').some(r => r.crop === q.crop && r.type === q.type && r.name === q.name)) add('Catalog', { crop: q.crop, type: q.type, name: q.name });
+    return {};
+  },
 
-/* area delineation */
-const drawGroup=L.layerGroup().addTo(map);let drawing=false,cur=[],polys=[];
-function polyHa(p){const R=6378137,r=Math.PI/180;let t=0;for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length];t+=(b[1]-a[1])*r*(2+Math.sin(a[0]*r)+Math.sin(b[0]*r))}return Math.abs(t*R*R/2)/1e4}
-function redrawShapes(){drawGroup.clearLayers();
- polys.forEach((p,i)=>L.polygon(p,{color:"#1f77b4",weight:2,fillOpacity:.25}).addTo(drawGroup).bindTooltip(`Shape ${i+1}: ${polyHa(p).toFixed(2)} ha`));
- if(cur.length){L.polyline(cur,{color:"#e8782a",dashArray:"5 4"}).addTo(drawGroup);cur.forEach(c=>L.circleMarker(c,{radius:4,color:"#e8782a",fillOpacity:1}).addTo(drawGroup))}
- const tot=polys.reduce((a,p)=>a+polyHa(p),0);
- $("shapes").textContent=drawing?`Drawing: ${cur.length} corner(s). Click the map to add corners, then press Finish shape.`:polys.length?`${polys.length} shape(s) · ${tot.toFixed(2)} ha (calculated)`:"No area drawn. Type the hectares below only if you are not drawing.";
- $("area").readOnly=polys.length>0;if(polys.length)$("area").value=tot.toFixed(2)}
-function setDrawUI(){$("drawb").textContent=drawing?"Finish shape":"Draw area";map.getContainer().style.cursor=drawing?"crosshair":"";drawing?map.doubleClickZoom.disable():map.doubleClickZoom.enable()}
-$("drawb").onclick=()=>{if(!drawing){drawing=true;cur=[]}else{if(cur.length<3){alert("A shape needs at least 3 corners.");return}
-  polys.push(cur);if(!pick){setPick(cur.reduce((a,c)=>a+c[0],0)/cur.length,cur.reduce((a,c)=>a+c[1],0)/cur.length)}cur=[];drawing=false}
- setDrawUI();redrawShapes()};
-$("undob").onclick=()=>{if(drawing&&cur.length)cur.pop();else if(!drawing)polys.pop();redrawShapes()};
-$("clearb").onclick=()=>{polys=[];cur=[];drawing=false;setDrawUI();redrawShapes()};
+  kml_add: q => {
+    admin(q);
+    const f = sub('KML layers').createFile(q.name, q.text, 'application/vnd.google-earth.kml+xml'), id = String(Date.now());
+    add('Layers', { id, name: q.name, fileId: f.getId(), created: new Date().toISOString() });
+    return { id };
+  },
 
-/* select helpers */
-const opts=(el,arr,first,sel)=>{el.innerHTML=(first!=null?`<option value="">${first}</option>`:"")+arr.map(a=>`<option>${esc(a)}</option>`).join("");if(sel)el.value=sel};
-function fillCrops(sel){const c=Object.keys(CAT).sort();opts($("crop"),c,null,sel);opts($("f-crop"),c,"All crops",$("f-crop").value)}
-function fillPests(sel){const c=CAT[$("crop").value]||{pest:[],disease:[]};
- $("pest").innerHTML='<option value="">Select…</option><optgroup label="Pests">'+c.pest.map(p=>`<option value="pest|${esc(p)}">${esc(p)}</option>`).join("")+'</optgroup><optgroup label="Diseases">'+c.disease.map(p=>`<option value="disease|${esc(p)}">${esc(p)}</option>`).join("")+"</optgroup>";if(sel)$("pest").value=sel}
-$("crop").onchange=()=>fillPests();
-$("addc").onclick=()=>{const n=(prompt("New crop name")||"").trim();if(!n)return;if(!CAT[n])CAT[n]={pest:[],disease:[]};save("pd_cat",CAT);if(ON)api("catalog_add",{crop:n,type:"crop",name:n}).catch(()=>{});fillCrops(n);fillPests()};
-const addPD=t=>{const n=(prompt(`New ${t} for ${$("crop").value}`)||"").trim();if(!n)return;const l=CAT[$("crop").value][t];if(!l.includes(n))l.push(n);save("pd_cat",CAT);if(ON)api("catalog_add",{crop:$("crop").value,type:t,name:n}).catch(()=>{});fillPests(t+"|"+n)};
-$("addp").onclick=()=>addPD("pest");$("addd").onclick=()=>addPD("disease");
-opts($("prov"),Object.keys(MUNI));
-const fillMuni=()=>opts($("muni"),MUNI[$("prov").value].split(","),"Select…");$("prov").onchange=fillMuni;$("prov").value="La Union";fillMuni();
-fillCrops();fillPests();
-$("date").value=new Date().toISOString().slice(0,10);
+  kml_remove: q => {
+    admin(q);
+    const s = T('Layers'), v = s.getDataRange().getValues();
+    for (let i = v.length - 1; i > 0; i--) if (String(v[i][0]) === String(q.id)) {
+      try { DriveApp.getFileById(v[i][2]).setTrashed(true); } catch (e) {}
+      s.deleteRow(i + 1);
+    }
+    return {};
+  }
+};
 
-/* farmers */
-function fillFarmers(sel){opts($("farmer"),farmers.map(f=>f.name),"Select farmer…",sel);showF()}
-function showF(){const f=farmers.find(x=>x.name===$("farmer").value);
- $("fstat").innerHTML=f?(f.rsbsa?"RSBSA registered":"Not registered in RSBSA")+(f.idPhoto?` · <a href="${f.idPhoto}" target="_blank" rel="noopener">view ID photo</a>`:""):""}
-$("farmer").onchange=showF;
-$("addf").onclick=()=>{$("fpanel").hidden=false;$("fname").focus()};
-$("cancelf").onclick=()=>{$("fpanel").hidden=true};
-$("frsbsa").onchange=()=>{$("fidwrap").hidden=!$("frsbsa").checked};
-$("fid").onchange=async e=>{if(!e.target.files[0])return;fidData=await shrink(e.target.files[0],1000);$("fidprev").src=fidData;$("fidprev").style.display="block"};
-$("savef").onclick=()=>{const n=$("fname").value.trim();if(!n){alert("Enter the farmer's name.");return}
- if(farmers.some(f=>f.name.toLowerCase()===n.toLowerCase())){alert("This farmer is already in the list.");return}
- farmers.push({name:n,rsbsa:$("frsbsa").checked,idPhoto:$("frsbsa").checked?fidData:null});farmers.sort((a,b)=>a.name.localeCompare(b.name));save("pd_farmers",farmers);
- fidData=null;$("fname").value="";$("frsbsa").checked=false;$("fidwrap").hidden=true;$("fidprev").style.display="none";$("fpanel").hidden=true;fillFarmers(n);push()};
-fillFarmers();
-
-/* photos: EXIF GPS + resize */
-function exifGPS(buf){const v=new DataView(buf);if(v.getUint16(0)!==0xFFD8)return null;let o=2;
- while(o<v.byteLength-4){const m=v.getUint16(o);if(m===0xFFE1&&v.getUint32(o+4)===0x45786966){const r=gpsAt(v,o+10);if(r)return r}if((m&0xFF00)!==0xFF00)break;o+=2+v.getUint16(o+2)}return null}
-function gpsAt(v,t){const le=v.getUint16(t)===0x4949,u16=p=>v.getUint16(p,le),u32=p=>v.getUint32(p,le);
- const ifd=p=>{const n=u16(p),r={};for(let i=0;i<n;i++){const e=p+2+i*12;r[u16(e)]=e}return r};
- const i0=ifd(t+u32(t+4));if(!i0[0x8825])return null;const g=ifd(t+u32(i0[0x8825]+8));if(!g[2]||!g[4])return null;
- const dms=e=>{const p=t+u32(e+8);const a=[0,1,2].map(k=>u32(p+k*8)/(u32(p+k*8+4)||1));return a[0]+a[1]/60+a[2]/3600};
- const ref=e=>String.fromCharCode(v.getUint8(e+8));let lat=dms(g[2]),lng=dms(g[4]);
- if(g[1]&&ref(g[1])==="S")lat=-lat;if(g[3]&&ref(g[3])==="W")lng=-lng;return(lat||lng)?{lat,lng}:null}
-function shrink(f,max=800){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");
- c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL("image/jpeg",.6))};im.onerror=no;im.src=u})}
-async function addFiles(files,cam){
- for(const f of files){if(photos.length>=3){alert("Maximum of 3 photos per incident.");break}
-  let g=null,src="none";try{g=exifGPS(await f.arrayBuffer());if(g)src="photo"}catch(e){}
-  if(!g&&cam){try{g=await devPos();src="device"}catch(e){}}
-  photos.push({d:await shrink(f),lat:g?g.lat:null,lng:g?g.lng:null,src})}
- const p=photos.find(x=>x.lat!=null);if(p&&!pick){setPick(p.lat,p.lng);map.setView([p.lat,p.lng],16)}drawThumbs()}
-function drawThumbs(){$("thumbs").innerHTML=photos.map((p,i)=>`<div class="th"><img src="${p.d||p.url}" alt="Photo ${i+1}">${{photo:"GPS in photo",device:"GPS from device",none:"No GPS: will use map pin"}[p.src]}<br><button type="button" data-x="${i}">Remove</button></div>`).join("")}
-$("thumbs").onclick=e=>{if(e.target.dataset.x!=null){photos.splice(+e.target.dataset.x,1);drawThumbs()}};
-$("camb").onclick=()=>$("cam").click();$("galb").onclick=()=>$("gal").click();
-$("cam").onchange=e=>{addFiles(e.target.files,true);e.target.value=""};$("gal").onchange=e=>{addFiles(e.target.files,false);e.target.value=""};
-
-$("form").onsubmit=e=>{e.preventDefault();
- if(drawing){alert("Press Finish shape to close the area you are drawing, or Clear.");return}
- if(!$("farmer").value){alert("Select a farmer, or add a new one.");return}
- if(!$("pest").value){alert("Select the pest or disease.");return}
- if(photos.length<1){alert("Add at least 1 geotagged photo.");return}
- if(!pick){alert("No location yet. Tap the map to pin the incident.");return}
- photos.forEach(p=>{if(p.lat==null){p.lat=pick.lat;p.lng=pick.lng;p.src="map"}});
- const f=farmers.find(x=>x.name===$("farmer").value),[type,pest]=$("pest").value.split("|");
- reports.unshift({id:Date.now(),lat:pick.lat,lng:pick.lng,farmer:f.name,rsbsa:f.rsbsa,crop:$("crop").value,pest,type,sev:$("sev").value,area:+$("area").value||0,
-  prov:$("prov").value,muni:$("muni").value,date:$("date").value,tech:$("tech").value,notes:$("notes").value,photos,polys,uid:(cu&&!admin)?cu.id:null,synced:false});
- if(!save("pd_reports",ON?reports.filter(r=>!r.synced):reports)){reports.shift();return}
- resetForm();$("coord").textContent="Report saved. The form is cleared for the next report.";render();push()};
-
-/* incidents */
-const filtered=()=>vis().filter(r=>(!admin||dashPass(r))&&(!$("f-crop").value||r.crop===$("f-crop").value)&&(!$("f-sev").value||r.sev===$("f-sev").value));
-function render(){renderDash();incidents.clearLayers();photoGroup.clearLayers();const list=filtered();
- list.forEach(r=>{const ph=r.photos||[];
-  (r.polys||[]).forEach(p=>L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.3}).addTo(incidents).bindTooltip(`${esc(r.pest)} · ${polyHa(p).toFixed(2)} ha`));
-  L.marker([r.lat,r.lng],{icon:pinIcon(COL[r.sev])}).addTo(incidents).bindPopup(
-  `<b>${esc(r.pest)}</b> (${esc(r.type)}) on ${esc(r.crop)}<br>Farmer: ${esc(r.farmer)} · ${r.rsbsa?"RSBSA registered":"Not in RSBSA"}<br>Severity: ${r.sev} · ${r.area} ha<br>${esc(r.muni)}, ${esc(r.prov)}<br>${esc(r.date)} · ${esc(r.tech)}<br>${esc(r.notes)}<br>`+ph.map(p=>`<img src="${p.d||p.url}" width="64" style="margin:3px 3px 0 0">`).join(""),{maxWidth:260});
-  ph.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:camIcon}).addTo(photoGroup).bindPopup(`<img src="${p.d||p.url}" width="200"><br>Photo ${i+1} · ${esc(r.pest)}<br>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)} (${p.src})`))});
- const cut=Date.now()-30*864e5;
- $("s-all").textContent=list.length;$("s-high").textContent=list.filter(r=>r.sev=="High"||r.sev=="Severe").length;
- $("s-ha").textContent=list.reduce((a,r)=>a+r.area,0).toFixed(1);$("s-30").textContent=list.filter(r=>new Date(r.date)>=cut).length;
- $("items").innerHTML=(loading&&!list.length)?SKEL:list.length?list.map(r=>`<div class="item" data-id="${r.id}"><button class="btn ghost" data-p="${r.id}" type="button" style="float:right;padding:2px 8px;font-size:12px">Print</button><span class="dot" style="background:${COL[r.sev]}"></span><b>${esc(r.pest)}</b> – ${esc(r.crop)}<br><small>${esc(r.farmer)} · ${esc(r.muni)}, ${esc(r.prov)} · ${r.sev} · ${esc(r.date)}</small></div>`).join(""):'<p class="hint">No incidents match. Reports you save appear here.</p>'}
-$("items").onclick=e=>{if(e.target.dataset.p){printIncident(e.target.dataset.p);return}const it=e.target.closest(".item");if(!it)return;const r=reports.find(x=>x.id==it.dataset.id);map.setView([r.lat,r.lng],15)};
-$("f-crop").onchange=$("f-sev").onchange=render;
-const dl=(name,txt,type)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()};
-$("csv").onclick=()=>{const h=["id","date","farmer","rsbsa","crop","type","pest","sev","area","prov","muni","lat","lng","tech","notes"];
- dl("incidents.csv",[h.join(",")].concat(filtered().map(r=>h.map(k=>`"${String(r[k]).replace(/"/g,'""')}"`).join(","))).join("\n"),"text/csv")};
-$("gj").onclick=()=>dl("incidents.geojson",JSON.stringify({type:"FeatureCollection",features:filtered().flatMap(r=>[{type:"Feature",geometry:{type:"Point",coordinates:[r.lng,r.lat]},properties:{...r,photos:(r.photos||[]).map(p=>({lat:p.lat,lng:p.lng,src:p.src}))}}].concat((r.polys||[]).map(p=>({type:"Feature",geometry:{type:"Polygon",coordinates:[p.concat([p[0]]).map(c=>[c[1],c[0]])]},properties:{id:r.id,pest:r.pest,sev:r.sev,ha:+polyHa(p).toFixed(3)}}))))}),"application/geo+json");
-
-/* KML */
-function kmlToGeoJSON(txt){const x=new DOMParser().parseFromString(txt,"text/xml");
- if(x.querySelector("parsererror"))throw new Error("Invalid KML file");
- const ll=s=>s.trim().split(/\s+/).map(p=>p.split(",").slice(0,2).map(Number)).filter(p=>p.length==2&&!isNaN(p[0]));
- const feats=[];
- x.querySelectorAll("Placemark").forEach(pm=>{
-  const t=n=>(pm.querySelector(n)||{}).textContent||"",props={name:t("name"),description:t("description")};
-  const add=g=>feats.push({type:"Feature",properties:props,geometry:g});
-  pm.querySelectorAll("Point > coordinates").forEach(c=>add({type:"Point",coordinates:ll(c.textContent)[0]}));
-  pm.querySelectorAll("LineString > coordinates").forEach(c=>add({type:"LineString",coordinates:ll(c.textContent)}));
-  pm.querySelectorAll("Polygon").forEach(p=>{const rings=[];const o=p.querySelector("outerBoundaryIs coordinates");if(o)rings.push(ll(o.textContent));
-   p.querySelectorAll("innerBoundaryIs coordinates").forEach(i=>rings.push(ll(i.textContent)));add({type:"Polygon",coordinates:rings})})});
- if(!feats.length)throw new Error("No placemarks found in this KML");
- return {type:"FeatureCollection",features:feats}}
-const PAL=["#1f77b4","#9467bd","#17a2b8","#8c564b","#2ca02c","#d62728"];
-function drawKml(){kmlGroup.clearLayers();
- layers.forEach(l=>{if(!l.on)return;L.geoJSON(l.data,{style:{color:l.color,weight:2,fillOpacity:.15},
-  pointToLayer:(f,p)=>L.circleMarker(p,{radius:5,color:l.color,fillOpacity:.7}),
-  onEachFeature:(f,lyr)=>{const p=f.properties;if(p.name||p.description)lyr.bindPopup(`<b>${esc(p.name)}</b><br>${p.description?esc(p.description.replace(/<[^>]+>/g,"")):""}`)}}).addTo(kmlGroup)});
- $("layers").innerHTML=layers.length?layers.map(l=>`<div class="layer"><input type="checkbox" data-i="${l.id}" ${l.on?"checked":""} aria-label="Show ${esc(l.name)}"><span style="color:${l.color}">■ ${esc(l.name)}</span><button class="btn ghost" data-z="${l.id}">Zoom</button><button class="btn ghost" data-d="${l.id}">Remove</button></div>`).join(""):'<p class="hint">No KML layers yet. Upload one above.</p>'}
-$("kml").onchange=async e=>{const f=e.target.files[0];if(!f)return;
- try{const txt=await f.text(),data=kmlToGeoJSON(txt);
-  const l={id:Date.now(),name:f.name,data,on:true,color:PAL[layers.length%PAL.length]};if(ON)l.id=(await api("kml_add",{name:f.name,text:txt})).id;layers.push(l);if(!ON)save("pd_kml",layers);drawKml();
-  map.fitBounds(L.geoJSON(data).getBounds())}catch(err){alert(err.message)}e.target.value=""};
-$("layers").onclick=e=>{const t=e.target,l=layers.find(x=>x.id==(t.dataset.i||t.dataset.z||t.dataset.d));if(!l)return;
- if(t.dataset.i){l.on=t.checked}else if(t.dataset.z){map.fitBounds(L.geoJSON(l.data).getBounds());return}else{layers=layers.filter(x=>x!==l);if(ON)api("kml_remove",{id:l.id}).catch(e=>alert(msg(e)))}
- if(!ON)save("pd_kml",layers);drawKml()};
-
-/* roles + tabs */
-function setRole(a){admin=a;$("r-admin").classList.toggle("on",a);$("r-tech").classList.toggle("on",!a);$("admin-lock").hidden=a;$("admin-body").hidden=!a;showAuth();updateWho();applyProfile();render()}
-$("r-admin").onclick=async()=>{const p=prompt(ON?"Administrator PIN":"Administrator PIN (demo PIN: 1234)");if(p===null)return;
- if(ON){try{adminPin=p;admin=true;await api("login_admin")}catch(e){admin=false;adminPin=null;alert(msg(e));return}admin=false}
- else if(p!=="1234"){alert("Incorrect PIN");return}
- setRole(true);tab("dash");pull()};
-$("r-tech").onclick=()=>setRole(false);
-function tab(n){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===n));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id===n))}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>tab(b.dataset.t));
-/* technician accounts */
-let users=load("pd_users",[]),cu=load("pd_cu",null);
-const fullName=u=>`${u.first} ${u.mi?u.mi+". ":""}${u.last}`;
-const vis=()=>admin?reports:reports.filter(r=>cu&&r.uid===cu.id);
-opts($("g-prov"),Object.keys(MUNI));
-$("g-prov").onchange=()=>opts($("g-muni"),MUNI[$("g-prov").value].split(","),"Select…");$("g-prov").onchange();
-function regLevel(){const l=$("g-level").value;$("g-provw").hidden=l==="Regional";$("g-muniw").hidden=l!=="Municipal";$("g-regw").hidden=l!=="Regional"}
-$("g-level").onchange=regLevel;regLevel();
-function aTab(t){$("a-in").hidden=t!=="in";$("a-reg").hidden=t!=="reg";document.querySelectorAll(".atabs button").forEach(b=>b.classList.toggle("on",b.dataset.a===t))}
-document.querySelectorAll(".atabs button").forEach(b=>b.onclick=()=>aTab(b.dataset.a));
-function fillUsers(){$("u-sel").innerHTML=users.map(u=>`<option value="${u.id}">${esc(fullName(u))} – ${esc(u.pos)}</option>`).join("");
- $("u-empty").textContent=users.length?"":"No technicians are registered yet. Use the Register tab.";if(!users.length)aTab("reg")}
-function showAuth(){$("auth").hidden=!!cu||admin;if($("auth").hidden)return;if(ON)api("users").then(j=>{users=j.users;fillUsers()}).catch(()=>fillUsers());else fillUsers()}
-function updateWho(){$("who").textContent=admin?"Administrator (all reports)":cu?`${fullName(cu)} · ${cu.pos} · ${cu.level}`:"";$("signout").hidden=!cu}
-function applyProfile(){const u=admin?null:cu;
- opts($("prov"),u&&u.level!=="Regional"?[u.prov]:Object.keys(MUNI));if(u&&u.prov)$("prov").value=u.prov;else $("prov").value="La Union";
- fillMuni();if(u&&u.level==="Municipal")$("muni").value=u.muni;
- $("tech").value=u?fullName(u):"";$("tech").readOnly=!!u}
-function resetForm(){photos=[];drawing=false;cur=[];polys=[];setDrawUI();redrawShapes();drawThumbs();
- if(pickMarker){map.removeLayer(pickMarker);pickMarker=null}pick=null;$("coord").textContent="No location picked yet.";
- $("farmer").value="";showF();$("fpanel").hidden=true;$("crop").selectedIndex=0;fillPests();$("sev").selectedIndex=0;
- $("area").readOnly=false;$("area").value="0.5";$("notes").value="";$("date").value=new Date().toISOString().slice(0,10);applyProfile()}
-function signIn(u){cu=u;save("pd_cu",u);updateWho();showAuth();resetForm();render();pull().then(push)}
-$("u-go").onclick=async()=>{if(ON){const pin=$("u-pin").value.trim();try{const j=await api("login",{uid:$("u-sel").value,pin});$("u-pin").value="";signIn({...j.user,pin})}catch(x){alert(msg(x))}return}const u=users.find(x=>String(x.id)===$("u-sel").value);if(!u||u.pin!==$("u-pin").value.trim()){alert("Wrong technician or PIN.");return}$("u-pin").value="";signIn(u)};
-$("u-admin").onclick=()=>$("r-admin").click();
-$("a-reg").onsubmit=async e=>{e.preventDefault();const g=id=>$(id).value.trim(),l=g("g-level");
- const u={id:Date.now(),first:g("g-first"),mi:g("g-mi").replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,2),last:g("g-last"),pos:g("g-pos"),level:l,
-  region:"Region I",prov:l==="Regional"?"":g("g-prov"),muni:l==="Municipal"?g("g-muni"):"",pin:g("g-pin")};
- if(l==="Municipal"&&!u.muni){alert("Select the municipality.");return}
- if(!/^\d{4}$/.test(u.pin)){alert("The PIN must be 4 digits.");return}
- if(users.some(x=>fullName(x).toLowerCase()===fullName(u).toLowerCase())){alert("This technician is already registered. Use Sign in.");return}
- if(ON){try{const j=await api("register",{user:u});Object.assign(u,j.user)}catch(x){alert(msg(x));return}}else{users.push(u);if(!save("pd_users",users)){users.pop();return}}
- e.target.reset();regLevel();$("g-prov").onchange();signIn(u)};
-$("signout").onclick=()=>{cu=null;try{localStorage.removeItem("pd_cu")}catch(e){}setRole(false)};
-/* admin dashboard */
-const heat=window.L&&L.heatLayer?L.heatLayer([],{radius:28,blur:22,maxZoom:15,minOpacity:.35,gradient:{.3:"#e0a526",.6:"#e8782a",.85:"#c0392b",1:"#7b1d1d"}}):Object.assign(L.layerGroup(),{setLatLngs(){}});
-const SW={Low:.25,Moderate:.5,High:.75,Severe:1};let curMode="pins";
-function setMode(m){if(m===curMode)return;m!=="heat"?incidents.addTo(map):map.removeLayer(incidents);m!=="pins"?heat.addTo(map):map.removeLayer(heat);curMode=m}
-function bars(id,e,col){const mx=Math.max(1,...e.map(x=>x[1]));
- $(id).innerHTML=e.length?e.map(([k,n])=>`<div class="b"><span title="${esc(k)}">${esc(k)}</span><i style="width:${n/mx*100}%;background:${col?col(k):"var(--brand)"}"></i><b>${n}</b></div>`).join(""):'<p class="hint">No data for these filters.</p>'}
-/* cluster alerts */
-const AC=load("pd_alertcfg",{min:3,km:5,days:14});
-const alertGroup=L.layerGroup().addTo(map);let curAlerts=[];
-const hav=(a,b)=>{const r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r,x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 12742*Math.asin(Math.sqrt(x))};
-function findAlerts(){const cut=new Date(Date.now()-AC.days*864e5).toISOString().slice(0,10),by={},out=[];
- vis().filter(r=>(r.sev==="High"||r.sev==="Severe")&&String(r.date)>=cut&&isFinite(r.lat)&&isFinite(r.lng)).forEach(r=>(by[r.pest]=by[r.pest]||[]).push(r));
- Object.entries(by).forEach(([pest,list])=>{const seen=new Set();
-  list.forEach((_,i)=>{if(seen.has(i))return;const comp=[],st=[i];seen.add(i);
-   while(st.length){const k=st.pop();comp.push(list[k]);list.forEach((r2,j)=>{if(!seen.has(j)&&hav(list[k],r2)<=AC.km){seen.add(j);st.push(j)}})}
-   if(comp.length<AC.min)return;
-   const lat=comp.reduce((a,r)=>a+r.lat,0)/comp.length,lng=comp.reduce((a,r)=>a+r.lng,0)/comp.length,dates=comp.map(r=>String(r.date)).sort();
-   out.push({pest,crops:[...new Set(comp.map(r=>r.crop))],n:comp.length,sev:comp.filter(r=>r.sev==="Severe").length,farmers:new Set(comp.map(r=>r.farmer)).size,
-    ha:comp.reduce((a,r)=>a+(r.area||0),0),munis:[...new Set(comp.map(r=>r.muni))],lat,lng,spread:Math.max(...comp.map(r=>hav({lat,lng},r))),
-    from:dates[0],to:dates[dates.length-1],level:comp.length>=AC.min*2?"Critical":"Warning"})})});
- return out.sort((a,b)=>b.n-a.n)}
-function renderAlerts(){curAlerts=findAlerts();alertGroup.clearLayers();
- curAlerts.forEach(a=>L.circle([a.lat,a.lng],{radius:a.spread*1000+800,color:a.level==="Critical"?"#7b1d1d":"#c0392b",weight:2,dashArray:"6 4",fillOpacity:.08}).addTo(alertGroup).bindTooltip(`${a.pest}: ${a.n} reports`));
- $("dash-tab").textContent=curAlerts.length?`Dashboard ⚠ ${curAlerts.length}`:"Dashboard";
- $("d-alerts").innerHTML=curAlerts.length?curAlerts.map((a,i)=>`<div class="alert ${a.level==="Critical"?"crit":""}"><b>${a.level.toUpperCase()}: ${esc(a.pest)}</b> (${esc(a.crops.join(", "))})<br>${a.n} High/Severe reports within ${AC.km} km${a.sev?`, ${a.sev} Severe`:""}<br><small>${a.farmers} farmer(s) · ${a.ha.toFixed(1)} ha · ${esc(a.munis.join(", "))} · ${esc(a.from)} to ${esc(a.to)}</small><br><button class="btn ghost" data-a="${i}" type="button" style="margin-top:4px;padding:3px 8px">Show on map</button></div>`).join(""):'<p class="hint">No clusters right now. Alerts appear here automatically.</p>'}
-$("d-alerts").onclick=e=>{const a=curAlerts[e.target.dataset.a];if(a)map.fitBounds(L.latLng(a.lat,a.lng).toBounds((a.spread*1000+800)*2.4))};
-Object.entries({"a-min":"min","a-km":"km","a-days":"days"}).forEach(([id,k])=>{$(id).value=AC[k];$(id).onchange=()=>{const v=+$(id).value;if(!(v>0)){$(id).value=AC[k];return}
- AC[k]=k==="min"?Math.max(2,Math.round(v)):v;$(id).value=AC[k];save("pd_alertcfg",AC);render()}});
-const dashPass=r=>{const f=$("d-from").value,t=$("d-to").value,c=$("d-crop").value,p=$("d-prov").value;return(!f||r.date>=f)&&(!t||r.date<=t)&&(!c||r.crop===c)&&(!p||r.prov===p)};
-function renderDash(){
- const nc=Object.keys(CAT).length+1;if($("d-crop").options.length!==nc)opts($("d-crop"),Object.keys(CAT).sort(),"All crops",$("d-crop").value);
- if(!$("d-prov").options.length)opts($("d-prov"),Object.keys(MUNI),"All provinces");
- $("dash-lock").hidden=admin;$("dash-body").hidden=!admin;
- if(!admin){alertGroup.clearLayers();$("dash-tab").textContent="Dashboard";heat.setLatLngs([]);$("d-map").value="pins";setMode("pins");return}
- renderAlerts();
- const set=vis().filter(dashPass);
- const tally=fn=>{const m={};set.forEach(r=>{const k=fn(r);m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
- $("d-kpi").innerHTML=[["Incidents",set.length],["Hectares",set.reduce((a,r)=>a+r.area,0).toFixed(1)],["High+Severe",set.filter(r=>r.sev=="High"||r.sev=="Severe").length],["Farmers",new Set(set.map(r=>r.farmer)).size]].map(([l,v])=>`<div><b>${v}</b>${l}</div>`).join("");
- bars("d-sev",["Low","Moderate","High","Severe"].map(k=>[k,set.filter(r=>r.sev===k).length]),k=>COL[k]);
- bars("d-pest",tally(r=>r.pest).slice(0,10));bars("d-muni",tally(r=>r.muni+", "+r.prov).slice(0,10));bars("d-crops",tally(r=>r.crop));
- heat.setLatLngs(set.map(r=>[r.lat,r.lng,SW[r.sev]||.5]));setMode($("d-map").value)}
-["d-from","d-to","d-crop","d-prov","d-map"].forEach(i=>$(i).onchange=render);
-
-/* printable reports */
-const E=esc,PAPER={A4:"A4",Letter:"letter",Long:"8.5in 13in"};
-const TILES={street:["https://tile.openstreetmap.org/{z}/{x}/{y}.png","© OpenStreetMap"],sat:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}","Esri"]};
-let pvMap=null,pvReady=true,lastShow=null;
-const paper=()=>{$("pv-ps").textContent=`@page{size:${PAPER[$("pv-size").value]};margin:14mm}`};$("pv-size").onchange=paper;paper();
-const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const fmtD=d=>d?new Date(d+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"";
-const dms=(v,p,n)=>{const a=Math.abs(v),d=Math.floor(a),m=Math.floor((a-d)*60),x=((a-d)*60-m)*60;return `${d}°${String(m).padStart(2,"0")}'${x.toFixed(1).padStart(4,"0")}"${v>=0?p:n}`};
-const dmsPair=(la,ln)=>dms(la,"N","S")+" "+dms(ln,"E","W");
-const periodTxt=(f,t)=>f&&t?`${fmtD(f)} to ${fmtD(t)}`:f?`from ${fmtD(f)}`:t?`up to ${fmtD(t)}`:"All dates";
-function closePrint(){$("pv").hidden=true;if(pvMap){pvMap.remove();pvMap=null}lastShow=null}
-$("pv-close").onclick=closePrint;
-$("pv-print").onclick=()=>{if(!pvReady&&!confirm("The map is still loading. Print anyway?"))return;window.print()};
-$("pv-base").onchange=()=>{if(lastShow)showPrint(lastShow)};
-const numIcon=(n,c)=>L.divIcon({className:"",html:`<div class="num" style="background:${c}">${n}</div>`,iconSize:[22,22],iconAnchor:[11,11]});
-function drawPrintMap(items,single){if(pvMap){pvMap.remove();pvMap=null}
- if(!$("pv-map")||!items.length){pvReady=true;$("pv-status").textContent="";return}
- pvMap=L.map("pv-map",{zoomControl:false});const T=TILES[$("pv-base").value],tl=L.tileLayer(T[0],{maxZoom:19,attribution:T[1]}).addTo(pvMap);
- pvReady=false;$("pv-status").textContent="Loading map… wait until it appears before printing";tl.on("load",()=>{pvReady=true;$("pv-status").textContent="Map ready"});
- const b=L.latLngBounds([]);
- items.forEach(({r,n})=>{(r.polys||[]).forEach(p=>{L.polygon(p,{color:COL[r.sev],weight:2,fillOpacity:.25}).addTo(pvMap);p.forEach(c=>b.extend(c))});
-  L.marker([r.lat,r.lng],{icon:numIcon(n,COL[r.sev])}).addTo(pvMap);b.extend([r.lat,r.lng]);
-  if(single)(r.photos||[]).forEach((p,i)=>{L.marker([p.lat,p.lng],{icon:L.divIcon({className:"",html:`<div class="cam" style="font-size:10px;font-weight:700">P${i+1}</div>`,iconSize:[24,24]})}).addTo(pvMap);b.extend([p.lat,p.lng])})});
- L.control.scale({imperial:false}).addTo(pvMap);pvMap.fitBounds(b,{padding:[40,40],maxZoom:17});setTimeout(()=>pvMap.invalidateSize(),60)}
-function showPrint(build){lastShow=build;const o=build();$("pv-page").innerHTML=o.html;$("pv").hidden=false;$("pv").scrollTop=0;drawPrintMap(o.items,o.single)}
-const mapPage=(title,note)=>`<div class="pgb"></div><div class="lh"><div style="font-weight:700;font-size:13px">ANNEX: LOCATION MAP</div></div><p style="text-align:center;margin:4px 0 6px">${title}</p><div id="pv-map"></div><p class="cn" style="text-align:center">${note}</p>`;
-const hd=t=>`<div class="lh"><div style="font-size:11px">Republic of the Philippines</div><div style="font-weight:700;font-size:14px">DEPARTMENT OF AGRICULTURE</div><div style="font-weight:700">REGIONAL FIELD OFFICE I</div><div style="font-size:11px">San Fernando City, La Union</div></div><h1>${t}</h1>`;
-async function userFor(r){if(cu&&r.uid===cu.id)return cu;let u=users.find(x=>String(x.id)===String(r.uid));
- if(!u&&ON&&(cu||admin)){try{users=(await api("users")).users;u=users.find(x=>String(x.id)===String(r.uid))}catch(e){}}return u||null}
-function sigs(name,pos){return `<div class="sg"><div><b>Prepared by:</b><div class="sl">${name?E(name.toUpperCase()):"&nbsp;"}</div><div>Signature over printed name<br>Position: ${pos?E(pos):"______________________"}<br>Date signed: ________________</div></div>
- <div><b>Noted / verified by:</b><div class="sl">&nbsp;</div><div>Signature over printed name (Supervisor)<br>Position: ______________________<br>Date signed: ________________</div></div></div>`}
-function sketch(r){const P=r.polys||[];if(!P.length)return"";const pts=P.flat(),la=pts.map(p=>p[0]),ln=pts.map(p=>p[1]),a=Math.min(...la),b=Math.max(...la),c=Math.min(...ln),d=Math.max(...ln),k=Math.cos((a+b)/2*Math.PI/180);
- const w=(d-c)*k||1e-5,h=b-a||1e-5,sc=Math.min(300/w,170/h),X=g=>10+(g-c)*k*sc,Y=t=>10+(b-t)*sc;
- return `<p class="sec2">F. Delineated affected area</p><svg width="${(w*sc+20).toFixed(0)}" height="${(h*sc+20).toFixed(0)}" style="border:1px solid #000">`+
-  P.map(p=>`<polygon points="${p.map(q=>X(q[1]).toFixed(1)+","+Y(q[0]).toFixed(1)).join(" ")}" fill="#f4b6b0" stroke="#c0392b" stroke-width="1.5"/>`).join("")+`<text x="${(w*sc+4).toFixed(0)}" y="16" font-size="11">N&#8593;</text></svg>
-  <div class="cn"><b>Corner coordinates (latitude, longitude):</b><br>${P.map((p,i)=>`Area ${i+1} (${polyHa(p).toFixed(2)} ha): `+p.map((q,j)=>`C${j+1} ${q[0].toFixed(5)}, ${q[1].toFixed(5)}`).join("; ")).join("<br>")}</div>`}
-function incidentHTML(r,u){const no=`PD-${String(r.date).slice(0,4)}-${String(r.id).slice(-6)}`,P=r.photos||[],row=(k,v)=>`<tr><th>${k}</th><td>${v}</td></tr>`,src={photo:"GPS in photo",device:"GPS from device",map:"map pin"};
- return hd("CROP PEST AND DISEASE INCIDENT REPORT")+`<p style="text-align:right;margin:4px 0">Report No.: <b>${no}</b></p><table class="pt">
- <tr><td colspan="2" class="sec">A. Reporter</td></tr>${row("Name of technician",E(r.tech))}${row("Position / level",u?E(u.pos)+" · "+E(u.level):"")}${row("Date observed",E(fmtD(r.date)||r.date))}${row("Date encoded",new Date(+r.id).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}))}
- <tr><td colspan="2" class="sec">B. Location of the incident</td></tr>${row("Municipality / province",E(r.muni)+", "+E(r.prov))}${row("Coordinates (decimal)","Latitude: <b>"+r.lat.toFixed(6)+"</b> &nbsp; Longitude: <b>"+r.lng.toFixed(6)+"</b>")}${row("Coordinates (DMS)",dmsPair(r.lat,r.lng))}
- <tr><td colspan="2" class="sec">C. Farmer</td></tr>${row("Name of farmer",E(r.farmer))}${row("RSBSA",r.rsbsa?"&#9745; Registered &nbsp;&nbsp; &#9744; Not registered":"&#9744; Registered &nbsp;&nbsp; &#9745; Not registered")}
- <tr><td colspan="2" class="sec">D. Incident</td></tr>${row("Crop",E(r.crop))}${row("Pest / disease",E(r.pest)+" ("+E(r.type)+")")}${row("Severity",E(r.sev))}
- ${row("Area affected",(+r.area).toFixed(2)+" ha"+((r.polys||[]).length?` (delineated on map: ${r.polys.length} area${r.polys.length>1?"s":""})`:" (estimated by technician)"))}${row("Notes / action taken",E(r.notes||"None").replace(/\n/g,"<br>"))}</table>
- <p class="sec2">E. Photographic evidence (geotagged)</p><div class="phs">${P.map((p,i)=>`<figure><img src="${p.d||p.url}" alt="Photo ${i+1}"><figcaption>Photo ${i+1}: ${(+p.lat).toFixed(5)}, ${(+p.lng).toFixed(5)} (${src[p.src]||E(p.src||"")})</figcaption></figure>`).join("")||"<i>No photos.</i>"}</div>
- ${sketch(r)}<p class="cert">I certify that the information in this report is true and correct, based on my field observation.</p>${sigs(r.tech,u&&u.pos)}
- <div class="ft">Report No. ${no} · Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`
- +mapPage(`${E(r.pest)} on ${E(r.crop)} · ${E(r.muni)}, ${E(r.prov)} · ${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`,"Numbered circle: incident location, colored by severity. P1 to P3: geotagged photo locations. Shaded area: delineated affected area. Map data © OpenStreetMap / Esri.")}
-async function printIncident(id){const r=reports.find(x=>String(x.id)===String(id));if(!r)return;const u=await userFor(r);showPrint(()=>({html:incidentHTML(r,u),items:[{r,n:1}],single:true}))}
-function summaryHTML(list,f,t,u){const tally={};list.forEach(r=>{const k=r.pest+" ("+r.crop+")";tally[k]=(tally[k]||0)+1});
- const pests=Object.entries(tally).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`${E(k)}: ${n}`).join(" · ");
- return hd("CROP PEST AND DISEASE MONITORING SUMMARY REPORT")+`<p style="margin:6px 0">Reporting period: <b>${E(periodTxt(f,t))}</b>${u?`<br>Technician: <b>${E(fullName(u))}</b>, ${E(u.pos)} (${E(u.level)})`:"<br>Scope: all technicians"}</p>
- <table class="pt list"><colgroup><col style="width:4%"><col style="width:9%"><col style="width:12%"><col style="width:11%"><col style="width:10%"><col style="width:6%"><col style="width:10%"><col style="width:7%"><col style="width:6%"><col style="width:25%"></colgroup><tr><th>No.</th><th>Date observed</th><th>Municipality, province</th><th>Coordinates (lat, long)</th><th>Farmer</th><th>Crop</th><th>Pest / disease</th><th>Severity</th><th>Area (ha)</th><th>Notes / action taken</th></tr>
- ${list.map((r,i)=>`<tr><td>${i+1}</td><td>${E(r.date)}</td><td>${E(r.muni)}, ${E(r.prov)}</td><td>${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}</td><td>${E(r.farmer)}</td><td>${E(r.crop)}</td><td>${E(r.pest)}</td><td>${E(r.sev)}</td><td style="text-align:right">${(+r.area).toFixed(2)}</td><td>${E(r.notes||"-").replace(/\n/g,"<br>")}</td></tr>`).join("")||'<tr><td colspan="10">No incidents were recorded in this period.</td></tr>'}
- <tr><td colspan="8" style="text-align:right"><b>Total area affected</b></td><td style="text-align:right"><b>${list.reduce((a,r)=>a+(+r.area||0),0).toFixed(2)}</b></td><td></td></tr></table>
- <p style="margin:8px 0"><b>Total incidents:</b> ${list.length} &nbsp;·&nbsp; ${["Low","Moderate","High","Severe"].map(k=>k+": "+list.filter(r=>r.sev===k).length).join(" · ")}</p>${pests?`<p style="margin:4px 0"><b>Pests and diseases reported:</b> ${pests}</p>`:""}
- <p class="cert">I certify that the information in this report is true and correct, based on my field observations.</p>${sigs(u&&fullName(u),u&&u.pos)}
- <div class="ft">Generated ${new Date().toLocaleString("en-PH")} · DA RFO I Crop Pest and Disease Surveillance System</div>`
- +(list.length?mapPage("Incident locations · "+E(periodTxt(f,t)),"Numbers match the No. column of the table. Circle color shows severity: yellow Low, orange Moderate, red High, dark red Severe. Map data © OpenStreetMap / Esri."):"")}
-function preset(){const v=$("r-preset").value,n=new Date(),y=n.getFullYear(),m=n.getMonth();let a,b;
- if(v==="month"){a=new Date(y,m,1);b=new Date(y,m+1,0)}else if(v==="last"){a=new Date(y,m-1,1);b=new Date(y,m,0)}else if(v==="7"){b=n;a=new Date(+n-6*864e5)}
- else if(v==="30"){b=n;a=new Date(+n-29*864e5)}else if(v==="year"){a=new Date(y,0,1);b=new Date(y,11,31)}else if(v==="all"){$("r-from").value="";$("r-to").value="";return}else return;
- $("r-from").value=ymd(a);$("r-to").value=ymd(b)}
-$("r-preset").onchange=preset;$("r-preset").value="month";preset();
-["r-from","r-to"].forEach(i=>$(i).onchange=()=>{$("r-preset").value="custom"});
-$("psum").onclick=()=>{const f=$("r-from").value,t=$("r-to").value;if(f&&t&&f>t){alert("The start date must be on or before the end date.");return}
- const list=vis().filter(r=>(!f||String(r.date)>=f)&&(!t||String(r.date)<=t)).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
- showPrint(()=>({html:summaryHTML(list,f,t,admin?null:cu),items:list.map((r,i)=>({r,n:i+1})),single:false}))};
-
-/* Google Sheets / Drive sync */
-let loading=false,ldT=null;const SKEL='<div class="sk"></div>'.repeat(5);map.getContainer().appendChild($("ld"));
-function setLoading(on){loading=on;document.body.classList.toggle("loading",on);$("ld").hidden=!on;clearTimeout(ldT);$("ld-sub").textContent="This can take a few seconds on a weak signal.";
- if(on)ldT=setTimeout(()=>{$("ld-sub").textContent="Still working… your saved reports are safe on this device."},8000);render()}
-let adminPin=null,busy=false,pushing=false,lastErr="";
-const msg=e=>e.message==="Failed to fetch"?"no internet connection":e.message;
-async function api(action,d){const a=admin?{admin:adminPin}:cu?{uid:cu.id,pin:cu.pin}:{};
- const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action,...a,...d})});
- const j=await r.json();if(!j.ok)throw new Error(j.error);return j}
-function updSync(){const n=reports.filter(r=>!r.synced&&(admin||(cu&&r.uid===cu.id))).length+farmers.filter(f=>!f.synced).length;
- $("sync").textContent=!ON?"Demo mode: records stay on this device only.":(n?`${n} item(s) waiting to upload. Press Sync now when you have signal.`:"All records are uploaded to Google Sheets and Drive.")+(lastErr?` (${lastErr})`:"")}
-async function pull(){if(!ON||busy||(!cu&&!admin))return;busy=true;lastErr="";setLoading(true);$("sync").innerHTML='<span class="spin"></span> Loading from Google Sheets…';
- try{const j=await api("pull");
-  reports=reports.filter(r=>!r.synced).concat(j.reports);
-  farmers=j.farmers.concat(farmers.filter(f=>!f.synced&&!j.farmers.some(x=>x.name.toLowerCase()===f.name.toLowerCase()))).sort((a,b)=>a.name.localeCompare(b.name));
-  for(const[c,v]of Object.entries(j.catalog)){CAT[c]=CAT[c]||{pest:[],disease:[]};["pest","disease"].forEach(t=>v[t].forEach(n=>{if(!CAT[c][t].includes(n))CAT[c][t].push(n)}))}
-  const on=Object.fromEntries(layers.map(l=>[l.id,l.on]));layers=[];
-  j.layers.forEach((l,i)=>{try{layers.push({id:l.id,name:l.name,data:kmlToGeoJSON(l.text),on:on[l.id]!==false,color:PAL[i%PAL.length]})}catch(e){}});
-  save("pd_cat",CAT);save("pd_farmers",farmers);save("pd_reports",reports.filter(r=>!r.synced));
-  const fs=$("farmer").value,cs=$("crop").value;fillCrops(cs);fillPests();fillFarmers(fs);drawKml();document.body.classList.add("fresh");setTimeout(()=>document.body.classList.remove("fresh"),1300);
- }catch(e){lastErr="sync failed: "+msg(e)}
- busy=false;setLoading(false);updSync()}
-async function push(){if(!ON||pushing||(!cu&&!admin))return;pushing=true;lastErr="";if(reports.some(x=>!x.synced)||farmers.some(x=>!x.synced))$("sync").innerHTML='<span class="spin"></span> Uploading…';
- try{for(const f of farmers.filter(x=>!x.synced)){const j=await api("farmer_add",{farmer:f});f.synced=true;f.idPhoto=j.idPhoto}
-  for(const r of reports.filter(x=>!x.synced&&(admin||x.uid===cu.id))){const j=await api("report_add",{report:r});Object.assign(r,j.report)}
- }catch(e){lastErr="upload paused: "+msg(e)}
- save("pd_farmers",farmers);save("pd_reports",reports.filter(r=>!r.synced));pushing=false;render();updSync()}
-$("syncb").onclick=()=>push().then(pull);
-window.addEventListener("online",()=>push().then(pull));
-render();drawKml();setRole(false);updSync();if(ON)pull().then(push);
-</script>
-</body>
-</html>
+/* ---------- web app entry points ---------- */
+const out = o => ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+function doGet() {
+  const r = { ok: true, msg: 'PD Monitoring API is running' };
+  try { r.runsAs = Session.getEffectiveUser().getEmail() || '(hidden)'; } catch (e) { r.runsAs = 'ERROR: ' + e.message; }
+  const t = (k, fn) => { try { fn(); r[k] = 'ok'; } catch (e) { r[k] = 'ERROR: ' + e.message; } };
+  t('folder', () => DriveApp.getFolderById(FOLDER_ID).getName());
+  t('incidentFolder', () => sub('Incident photos'));
+  t('privateFolder', () => rsbsaFolder());
+  t('createFile', () => { sub('Incident photos').createFile('diag.txt', 'x').setTrashed(true); });
+  t('shareLink', () => {
+    const f = sub('Incident photos').createFile('diag.txt', 'x');
+    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } finally { f.setTrashed(true); }
+  });
+  return out(r);
+}
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(25000);
+    const q = JSON.parse(e.postData.contents), fn = R[q.action];
+    if (!fn) throw new Error('Unknown action');
+    return out(Object.assign({ ok: true }, fn(q)));
+  } catch (err) {
+    return out({ ok: false, error: String(err.message || err) });
+  } finally {
+    try { lock.releaseLock(); } catch (x) {}
+  }
+}
