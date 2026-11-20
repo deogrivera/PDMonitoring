@@ -65,6 +65,11 @@ input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--line);bo
 @keyframes drop{from{opacity:0;transform:translateY(-16px) rotate(-45deg)}to{opacity:1;transform:rotate(-45deg)}}
 body.loading #d-kpi,body.loading .bars{animation:pulse 1.2s ease infinite}body.fresh .pin{animation:drop .45s ease both}
 @media (prefers-reduced-motion:reduce){.sk,.ldbar i,body.fresh .pin,body.loading #d-kpi,body.loading .bars{animation:none}}
+.grp{border:1px solid var(--line);border-radius:8px;margin:0 0 12px;overflow:hidden}
+.grp>h4{margin:0;padding:8px 12px;background:var(--bg);font:700 13px "Segoe UI",sans-serif;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.grp>h4 i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;text-align:center;line-height:20px;font-size:12px}
+.grp .gb{padding:2px 12px 12px}.req::after{content:" *";color:var(--high)}
+.savebar{position:sticky;bottom:-14px;background:var(--panel);padding:10px 0 2px;border-top:1px solid var(--line)}
 .num{width:22px;height:22px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 11px/18px sans-serif;text-align:center;box-shadow:0 0 3px #000}
 #pv-map{width:660px;height:470px;margin:0 auto;border:1px solid #000;background:#eee}.pgb{border-top:2px dashed #999;margin:26px 0 12px}
 .pt.list{font-size:10px;table-layout:fixed;word-wrap:break-word;overflow-wrap:anywhere}.pt.list td,.pt.list th{padding:3px 4px}.cn{font-size:10px;color:#222;margin-top:4px}
@@ -86,40 +91,59 @@ body.loading #d-kpi,body.loading .bars{animation:pulse 1.2s ease infinite}body.f
   <div class="tabs"><button class="on" data-t="report">Report</button><button data-t="list">Incidents</button><button data-t="dash" id="dash-tab">Dashboard</button><button data-t="admin">Map layers</button></div>
 
   <section class="pane on" id="report">
-    <p class="hint">Tap the map or use GPS to set the location, then fill in the details.</p>
-    <button class="btn ghost" id="gps" type="button">Use my GPS location</button>
-    <div class="coord" id="coord">No location picked yet.</div>
+    <p class="hint" style="margin-top:0">Fill in the four sections below, then press <b>Save incident</b>. Fields marked <span style="color:var(--high)">*</span> are required.</p>
     <form id="form" autocomplete="off">
-      <label for="farmer">Farmer</label>
-      <div class="inl"><select id="farmer"></select><button class="btn ghost" id="addf" type="button">+ Farmer</button></div>
-      <div id="fstat" class="hint"></div>
-      <div id="fpanel" class="mini" hidden>
-        <label for="fname">Farmer name (Last, First M.)</label><input id="fname">
-        <div class="chk"><input type="checkbox" id="frsbsa"><label for="frsbsa" style="margin:0">Registered in RSBSA</label></div>
-        <div id="fidwrap" hidden><label for="fid">Photo of RSBSA ID</label><input id="fid" type="file" accept="image/*" capture="environment"><img id="fidprev" alt="" style="max-width:120px;margin-top:4px;display:none"></div>
-        <p><button class="btn" id="savef" type="button">Save farmer</button> <button class="btn ghost" id="cancelf" type="button">Cancel</button></p>
-      </div>
-      <label>Geotagged photos (1 to 3)</label>
-      <div class="inl"><button class="btn ghost" id="camb" type="button">Take photo</button><button class="btn ghost" id="galb" type="button">Choose photos</button></div>
-      <input id="cam" type="file" accept="image/*" capture="environment" hidden><input id="gal" type="file" accept="image/*" multiple hidden>
-      <div class="hint">Photos taken in-app use this device's GPS. Chosen photos use the GPS saved in the file.</div>
-      <div class="thumbs" id="thumbs"></div>
-      <div class="row"><div><label for="crop">Crop</label><div class="inl"><select id="crop"></select><button class="btn ghost" id="addc" type="button">+ Crop</button></div></div>
-      <div><label for="pest">Pest / disease</label><select id="pest"></select></div></div>
-      <div class="inl" style="margin-top:6px"><button class="btn ghost" id="addp" type="button">+ Pest</button><button class="btn ghost" id="addd" type="button">+ Disease</button></div>
-      <label>Affected area on map</label>
-      <div class="inl"><button class="btn ghost" id="drawb" type="button">Draw area</button><button class="btn ghost" id="undob" type="button">Undo</button><button class="btn ghost" id="clearb" type="button">Clear</button></div>
-      <div class="hint" id="shapes">No area drawn. Type the hectares below only if you are not drawing.</div>
-      <div class="row"><div><label for="sev">Severity</label><select id="sev"><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
-      <div><label for="area">Area affected (ha)</label><input id="area" type="number" min="0" step="0.01" value="0.5"></div></div>
-      <div class="row"><div><label for="prov">Province</label><select id="prov"></select></div>
-      <div><label for="muni">Municipality / city</label><select id="muni" required></select></div></div>
-      <div class="row"><div><label for="date">Date observed</label><input id="date" type="date" required></div>
-      <div><label for="tech">Reported by</label><input id="tech" required></div></div>
-      <label for="notes">Notes / action taken</label><textarea id="notes" rows="3"></textarea>
-      <p><button class="btn" type="submit">Save incident</button></p>
+
+      <div class="grp"><h4><i>1</i>Location</h4><div class="gb">
+        <label class="req">GPS location</label>
+        <button class="btn ghost" id="gps" type="button">Use my GPS location</button>
+        <div class="coord" id="coord">No location picked yet.</div>
+        <div class="hint">Or tap the incident on the map. A geotagged photo in section 3 also sets the location.</div>
+        <div class="row"><div><label for="prov" class="req">Province</label><select id="prov"></select></div>
+        <div><label for="muni" class="req">Municipality / city</label><select id="muni" required></select></div></div>
+      </div></div>
+
+      <div class="grp"><h4><i>2</i>Farmer Profile</h4><div class="gb">
+        <label for="farmer" class="req">Name of farmer</label>
+        <div class="inl"><select id="farmer"></select><button class="btn ghost" id="addf" type="button">+ Farmer</button></div>
+        <div id="fstat" class="hint"></div>
+        <div id="fpanel" class="mini" hidden>
+          <label for="fname">Farmer name (Last, First M.)</label><input id="fname">
+          <div class="chk"><input type="checkbox" id="frsbsa"><label for="frsbsa" style="margin:0">Registered in RSBSA</label></div>
+          <div id="fidwrap" hidden><label for="fid">Photo of RSBSA ID</label><input id="fid" type="file" accept="image/*" capture="environment"><img id="fidprev" alt="" style="max-width:120px;margin-top:4px;display:none"></div>
+          <p><button class="btn" id="savef" type="button">Save farmer</button> <button class="btn ghost" id="cancelf" type="button">Cancel</button></p>
+        </div>
+      </div></div>
+
+      <div class="grp"><h4><i>3</i>Incident Profile</h4><div class="gb">
+        <label for="date" class="req">Date observed</label><input id="date" type="date" required>
+        <label for="crop" class="req">Crop</label>
+        <div class="inl"><select id="crop"></select><button class="btn ghost" id="addc" type="button">+ Crop</button></div>
+        <label for="pest" class="req">Pest / disease</label>
+        <select id="pest"></select>
+        <div class="inl" style="margin-top:6px"><button class="btn ghost" id="addp" type="button">+ Pest</button><button class="btn ghost" id="addd" type="button">+ Disease</button></div>
+        <label>Affected area (draw on the map)</label>
+        <div class="inl"><button class="btn ghost" id="drawb" type="button">Draw area</button><button class="btn ghost" id="undob" type="button">Undo</button><button class="btn ghost" id="clearb" type="button">Clear</button></div>
+        <div class="hint" id="shapes">No area drawn. Type the hectares below only if you are not drawing.</div>
+        <div class="row"><div><label for="sev" class="req">Severity</label><select id="sev"><option>Low</option><option>Moderate</option><option>High</option><option>Severe</option></select></div>
+        <div><label for="area" class="req">Area affected (ha)</label><input id="area" type="number" min="0" step="0.01" value="0.5"></div></div>
+        <label class="req">Geotagged photos (1 to 3)</label>
+        <div class="inl"><button class="btn ghost" id="camb" type="button">Take photo</button><button class="btn ghost" id="galb" type="button">Choose photos</button></div>
+        <input id="cam" type="file" accept="image/*" capture="environment" hidden><input id="gal" type="file" accept="image/*" multiple hidden>
+        <div class="hint">Photos taken in the app use this device's GPS. Chosen photos use the GPS saved in the file.</div>
+        <div class="thumbs" id="thumbs"></div>
+        <label for="tech" class="req">Reported by</label><input id="tech" required>
+      </div></div>
+
+      <div class="grp"><h4><i>4</i>Notes / Action Taken</h4><div class="gb">
+        <label for="notes">Notes, observations and action taken</label>
+        <textarea id="notes" rows="4" placeholder="Example: Advised the farmer to spray; will re-visit in 7 days."></textarea>
+      </div></div>
+
+      <div class="savebar"><button class="btn" type="submit" style="width:100%">Save incident</button></div>
     </form>
   </section>
+
 
   <section class="pane" id="list">
     <div class="stats"><div><b id="s-all">0</b>Total</div><div><b id="s-high">0</b>High+</div><div><b id="s-ha">0</b>Ha</div><div><b id="s-30">0</b>30 days</div></div>
